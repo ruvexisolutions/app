@@ -33,7 +33,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } else {
       _items = [];
     }
-    if (widget.appState.discountAmount > 0) {
+    final customer = widget.appState.posSelectedCustomer;
+    if (customer != null && customer.hasActiveMembership && customer.membershipDiscountPercent > 0) {
+      _isPercentDiscount = true;
+      _selectedDiscountPercent = customer.membershipDiscountPercent;
+    } else if (widget.appState.discountAmount > 0) {
       _customDiscountAmount = widget.appState.discountAmount;
     }
   }
@@ -380,8 +384,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 CustomerPickerSheet.show(
                   context: context,
                   appState: widget.appState,
-                  onSelected: (_) {
-                    setState(() {});
+                  onSelected: (selCustomer) {
+                    setState(() {
+                      if (selCustomer != null && selCustomer.hasActiveMembership && selCustomer.membershipDiscountPercent > 0) {
+                        _isPercentDiscount = true;
+                        _selectedDiscountPercent = selCustomer.membershipDiscountPercent;
+                      }
+                    });
                   },
                 );
               },
@@ -392,82 +401,120 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: widget.appState.posSelectedCustomer != null
-                        ? const Color(0xFF22C55E).withOpacity(0.5)
+                        ? (customer.hasActiveMembership
+                            ? const Color(0xFFFACC15).withValues(alpha: 0.5)
+                            : const Color(0xFF22C55E).withOpacity(0.5))
                         : Colors.white.withOpacity(0.08),
                   ),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: widget.appState.posSelectedCustomer != null
-                          ? const Color(0xFF1B3822)
-                          : const Color(0xFF1F2420),
-                      child: Text(
-                        customer.name.isNotEmpty ? customer.name.substring(0, 1).toUpperCase() : "W",
-                        style: TextStyle(
-                          color: widget.appState.posSelectedCustomer != null
-                              ? const Color(0xFF22C55E)
-                              : Colors.white70,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: widget.appState.posSelectedCustomer != null
+                              ? (customer.hasActiveMembership ? const Color(0xFF2B2612) : const Color(0xFF1B3822))
+                              : const Color(0xFF1F2420),
+                          child: Text(
+                            customer.name.isNotEmpty ? customer.name.substring(0, 1).toUpperCase() : "W",
+                            style: TextStyle(
+                              color: widget.appState.posSelectedCustomer != null
+                                  ? (customer.hasActiveMembership ? const Color(0xFFFACC15) : const Color(0xFF22C55E))
+                                  : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                customer.name,
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              Row(
+                                children: [
+                                  Text(
+                                    customer.name,
+                                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                  ),
+                                  if (widget.appState.posSelectedCustomer != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: customer.hasActiveMembership ? const Color(0xFF2B2612) : const Color(0xFF122C1A),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: customer.hasActiveMembership ? Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.5)) : null,
+                                      ),
+                                      child: Text(
+                                        customer.hasActiveMembership ? customer.membership : "Selected",
+                                        style: TextStyle(
+                                          color: customer.hasActiveMembership ? const Color(0xFFFACC15) : const Color(0xFF22C55E),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              if (widget.appState.posSelectedCustomer != null) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF122C1A),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    "Selected",
-                                    style: TextStyle(color: Color(0xFF22C55E), fontSize: 10, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ],
+                              const SizedBox(height: 2),
+                              Text(
+                                customer.phone.isNotEmpty ? customer.phone : "Tap to link or add new customer",
+                                style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            customer.phone.isNotEmpty ? customer.phone : "Tap to link or add new customer",
-                            style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141815),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.35)),
                           ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF141815),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.35)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.person_add_alt, size: 14, color: Color(0xFF22C55E)),
-                          SizedBox(width: 4),
-                          Text(
-                            "Change / Add",
-                            style: TextStyle(color: Color(0xFF22C55E), fontSize: 11, fontWeight: FontWeight.bold),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person_add_alt, size: 14, color: Color(0xFF22C55E)),
+                              SizedBox(width: 4),
+                              Text(
+                                "Change / Add",
+                                style: TextStyle(color: Color(0xFF22C55E), fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                    if (customer.hasActiveMembership) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1A12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.stars_rounded, color: Color(0xFFFACC15), size: 15),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                "Universal Cross-Branch Access • Auto ${customer.membershipDiscountPercent.toInt()}% Member Privilege Applied",
+                                style: const TextStyle(
+                                  color: Color(0xFFFACC15),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

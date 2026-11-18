@@ -716,7 +716,7 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                           Text(
                             _viewMode == 0
                                 ? "Settled customer bills for ${DateFormat('EEE, dd MMM').format(_selectedDate)}"
-                                : "${widget.appState.customers.length} registered salon clients",
+                                : "${widget.appState.visibleCustomers.length} clients (${widget.appState.activeBranch?.name ?? 'This Branch'})",
                             style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
                           ),
                         ],
@@ -801,7 +801,7 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    "Clients CRM (${widget.appState.customers.length})",
+                                    "Clients CRM (${widget.appState.visibleCustomers.length})",
                                     style: TextStyle(
                                       color: _viewMode == 1 ? const Color(0xFF22C55E) : Colors.white60,
                                       fontSize: 12,
@@ -1318,7 +1318,7 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        _buildClientChip(0, "All (${widget.appState.customers.length})"),
+                        _buildClientChip(0, "All (${widget.appState.visibleCustomers.length})"),
                         const SizedBox(width: 8),
                         _buildClientChip(1, "In Salon (${widget.appState.inSalonActiveCount})"),
                       ],
@@ -1335,7 +1335,7 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                             .map((i) => i.customerName.toLowerCase())
                             .toSet();
 
-                        final filtered = widget.appState.customers.where((c) {
+                        final filtered = widget.appState.visibleCustomers.where((c) {
                           final matches = c.name.toLowerCase().contains(_query.toLowerCase()) || c.phone.contains(_query);
                           if (!matches) return false;
                           if (_clientFilter == 1) return inSalonNames.contains(c.name.toLowerCase());

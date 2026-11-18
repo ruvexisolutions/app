@@ -258,8 +258,9 @@ class _CustomerPickerSheetState extends State<CustomerPickerSheet> {
                                 dateOfBirth: dobStr,
                                 visitsCount: 1,
                                 totalSpent: 0,
-                                membership: "Silver Regular",
+                                membership: "Standard",
                                 tag: "New",
+                                branchId: widget.appState.activeBranch?.id ?? "",
                               );
 
                               await widget.appState.addCustomer(newCustomer);
@@ -306,7 +307,7 @@ class _CustomerPickerSheetState extends State<CustomerPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final query = _searchQuery.toLowerCase().trim();
-    final matchingCustomers = widget.appState.customers.where((c) {
+    final matchingCustomers = widget.appState.visibleCustomers.where((c) {
       if (query.isEmpty) return true;
       return c.name.toLowerCase().contains(query) || c.phone.contains(query);
     }).toList();
@@ -467,27 +468,66 @@ class _CustomerPickerSheetState extends State<CustomerPickerSheet> {
                             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5),
                           ),
                           subtitle: Text(
-                            c.phone.isNotEmpty ? c.phone : "No phone number",
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                            c.hasActiveMembership
+                                ? "${c.phone.isNotEmpty ? c.phone : 'Member'} • Universal ${c.membershipDiscountPercent.toInt()}% Discount"
+                                : (c.phone.isNotEmpty ? c.phone : "No phone number"),
+                            style: TextStyle(
+                              color: c.hasActiveMembership ? const Color(0xFFFACC15).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.5),
+                              fontSize: 11,
+                              fontWeight: c.hasActiveMembership ? FontWeight.w500 : FontWeight.normal,
+                            ),
                           ),
                           trailing: isSelected
                               ? const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 20)
-                              : Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.06),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    c.membership,
-                                    style: TextStyle(
-                                      color: c.membership.toLowerCase().contains("vip")
-                                          ? const Color(0xFF22C55E)
-                                          : Colors.white70,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: c.hasActiveMembership
+                                            ? const Color(0xFFFACC15).withValues(alpha: 0.15)
+                                            : Colors.white.withValues(alpha: 0.06),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: c.hasActiveMembership
+                                            ? Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.45), width: 1)
+                                            : null,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (c.hasActiveMembership) ...[
+                                            const Icon(Icons.stars_rounded, color: Color(0xFFFACC15), size: 12),
+                                            const SizedBox(width: 4),
+                                          ],
+                                          Text(
+                                            c.membership,
+                                            style: TextStyle(
+                                              color: c.hasActiveMembership
+                                                  ? const Color(0xFFFACC15)
+                                                  : (c.membership.toLowerCase().contains("vip")
+                                                      ? const Color(0xFF22C55E)
+                                                      : Colors.white70),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                                    if (c.hasActiveMembership) ...[
+                                      const SizedBox(height: 3),
+                                      const Text(
+                                        "All-Branches VIP",
+                                        style: TextStyle(
+                                          color: Color(0xFF22C55E),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                           onTap: () {
                             widget.appState.setPosCustomer(c);

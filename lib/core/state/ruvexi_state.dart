@@ -78,6 +78,7 @@ class Customer {
   final String membership;
   final String? formulaNotes;
   final String tag; // "Regular", "New", "Inactive"
+  final String branchId;
 
   Customer({
     required this.id,
@@ -92,6 +93,7 @@ class Customer {
     this.membership = "Standard",
     this.formulaNotes,
     this.tag = "Regular",
+    this.branchId = "",
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -115,9 +117,64 @@ class Customer {
       loyaltyPoints: (json['loyaltyPoints'] is num)
           ? (json['loyaltyPoints'] as num).toInt()
           : int.tryParse('${json['loyaltyPoints']}') ?? 50,
-      membership: (json['vipTier'] ?? 'Standard').toString(),
+      membership: (json['vipTier'] ?? json['membership'] ?? 'Standard').toString(),
       formulaNotes: (json['formulaNotes'] ?? json['notes'])?.toString(),
       tag: derivedTag,
+      branchId: (json['branchId'] ?? json['branch_id'] ?? '').toString(),
+    );
+  }
+
+  bool get hasActiveMembership {
+    final m = membership.toLowerCase();
+    return m.contains("gold") ||
+        m.contains("silver") ||
+        m.contains("platinum") ||
+        m.contains("diamond") ||
+        m.contains("vip") ||
+        m.contains("prime") ||
+        m.contains("elite") ||
+        (m.contains("member") && !m.contains("standard"));
+  }
+
+  double get membershipDiscountPercent {
+    final m = membership.toLowerCase();
+    if (m.contains("diamond") || m.contains("vip")) return 20.0;
+    if (m.contains("platinum")) return 15.0;
+    if (m.contains("gold")) return 10.0;
+    if (m.contains("silver")) return 5.0;
+    if (m.contains("prime") || m.contains("elite") || m.contains("member")) return 10.0;
+    return 0.0;
+  }
+
+  Customer copyWith({
+    String? id,
+    String? name,
+    String? phone,
+    String? email,
+    String? gender,
+    String? dateOfBirth,
+    int? visitsCount,
+    double? totalSpent,
+    int? loyaltyPoints,
+    String? membership,
+    String? formulaNotes,
+    String? tag,
+    String? branchId,
+  }) {
+    return Customer(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      gender: gender ?? this.gender,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      visitsCount: visitsCount ?? this.visitsCount,
+      totalSpent: totalSpent ?? this.totalSpent,
+      loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+      membership: membership ?? this.membership,
+      formulaNotes: formulaNotes ?? this.formulaNotes,
+      tag: tag ?? this.tag,
+      branchId: branchId ?? this.branchId,
     );
   }
 }
@@ -133,6 +190,7 @@ class Appointment {
   final double price;
   String status; // "In Service", "Confirmed", "Upcoming", "Completed", "Cancelled"
   final String notes;
+  final String branchId;
 
   Appointment({
     required this.id,
@@ -145,6 +203,7 @@ class Appointment {
     required this.price,
     required this.status,
     this.notes = "",
+    this.branchId = "",
   });
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
@@ -193,6 +252,7 @@ class Appointment {
       price: (json['price'] is num) ? (json['price'] as num).toDouble() : double.tryParse('${json['price']}') ?? 0.0,
       status: uiStatus,
       notes: (json['notes'] ?? '').toString(),
+      branchId: (json['branchId'] ?? json['branch_id'] ?? '').toString(),
     );
   }
 }
@@ -308,6 +368,7 @@ class ExpenseItem {
   final double amount;
   final DateTime date;
   final String note;
+  final String branchId;
 
   ExpenseItem({
     required this.id,
@@ -315,6 +376,7 @@ class ExpenseItem {
     required this.amount,
     required this.date,
     this.note = "",
+    this.branchId = "",
   });
 
   factory ExpenseItem.fromJson(Map<String, dynamic> json) {
@@ -331,6 +393,7 @@ class ExpenseItem {
       amount: (json['amount'] is num) ? (json['amount'] as num).toDouble() : double.tryParse('${json['amount']}') ?? 0.0,
       date: parsedDate,
       note: notes.isNotEmpty ? notes : title,
+      branchId: (json['branchId'] ?? json['branch_id'] ?? '').toString(),
     );
   }
 }
@@ -861,34 +924,8 @@ class RuvexiAppState extends ChangeNotifier {
         ..addAll(updatedClients);
       _rebuildSeats(salonChairs);
 
-      // Compute dashboard KPIs from real server records
-      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      double revToday = 0.0;
-      int completedCount = 0;
-      for (final inv in invoices) {
-        final status = (inv['status'] ?? '').toString().toLowerCase();
-        final dateField = (inv['paidAt'] ?? inv['createdAt'] ?? inv['date'] ?? '').toString();
-        if (status == 'paid' && dateField.startsWith(todayStr)) {
-          revToday += (inv['grandTotal'] is num) ? (inv['grandTotal'] as num).toDouble() : 0.0;
-          completedCount += 1;
-        }
-      }
-
-      if (revToday == 0.0 && invoices.isNotEmpty) {
-        for (final inv in invoices) {
-          if ((inv['status'] ?? '').toString().toLowerCase() == 'paid') {
-            revToday += (inv['grandTotal'] is num) ? (inv['grandTotal'] as num).toDouble() : 0.0;
-            completedCount += 1;
-          }
-        }
-      }
-
-      todayRevenue = revToday;
-      todayAppointmentsCount = appointments.where((a) => DateFormat('yyyy-MM-dd').format(a.time) == todayStr).length;
-      if (todayAppointmentsCount == 0) todayAppointmentsCount = appointments.length;
-      todayClientsCount = customers.length;
-      staffCompletedCount = completedCount;
-      todayProfit = (revToday - totalExpenses).clamp(0.0, double.infinity);
+      // Compute dashboard KPIs scoped to the active branch
+      recalculateBranchMetrics();
 
       if (canSwitchRoles) {
         try {
@@ -1004,6 +1041,77 @@ class RuvexiAppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Normal customers are isolated to their registered branch.
+  /// Membership customers (Gold, Silver, Platinum, Diamond, VIP) are shared across ALL branches!
+  List<Customer> get visibleCustomers {
+    final curBranchId = activeBranch?.id;
+    if (curBranchId == null || curBranchId.isEmpty) return customers;
+    return customers.where((c) {
+      if (c.hasActiveMembership) return true;
+      return c.branchId.isEmpty || c.branchId == curBranchId;
+    }).toList();
+  }
+
+  /// Branch-filtered appointments
+  List<Appointment> get branchAppointments {
+    final curBranchId = activeBranch?.id;
+    if (curBranchId == null || curBranchId.isEmpty) return appointments;
+    return appointments.where((a) => a.branchId.isEmpty || a.branchId == curBranchId || a.branchId == 'Flagship').toList();
+  }
+
+  /// Branch-filtered invoices
+  List<Map<String, dynamic>> get branchInvoices {
+    final curBranchId = activeBranch?.id;
+    if (curBranchId == null || curBranchId.isEmpty) return invoices;
+    return invoices.where((inv) {
+      final bId = (inv['branchId'] ?? '').toString();
+      return bId.isEmpty || bId == curBranchId;
+    }).toList();
+  }
+
+  /// Branch-filtered expenses
+  List<ExpenseItem> get branchExpenses {
+    final curBranchId = activeBranch?.id;
+    if (curBranchId == null || curBranchId.isEmpty) return expenses;
+    return expenses.where((e) => e.branchId.isEmpty || e.branchId == curBranchId).toList();
+  }
+
+  double get branchTotalExpenses => branchExpenses.fold(0.0, (sum, e) => sum + e.amount);
+
+  void recalculateBranchMetrics() {
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final curBranchId = activeBranch?.id;
+
+    final branchInvs = branchInvoices;
+    double revToday = 0.0;
+    int completedCount = 0;
+    for (final inv in branchInvs) {
+      final status = (inv['status'] ?? '').toString().toLowerCase();
+      final dateField = (inv['paidAt'] ?? inv['createdAt'] ?? inv['date'] ?? '').toString();
+      if (status == 'paid' && dateField.startsWith(todayStr)) {
+        revToday += (inv['grandTotal'] is num) ? (inv['grandTotal'] as num).toDouble() : 0.0;
+        completedCount += 1;
+      }
+    }
+
+    if (revToday == 0.0 && branchInvs.isNotEmpty) {
+      for (final inv in branchInvs) {
+        if ((inv['status'] ?? '').toString().toLowerCase() == 'paid') {
+          revToday += (inv['grandTotal'] is num) ? (inv['grandTotal'] as num).toDouble() : 0.0;
+          completedCount += 1;
+        }
+      }
+    }
+
+    final branchAppts = branchAppointments;
+    todayRevenue = revToday;
+    todayAppointmentsCount = branchAppts.where((a) => DateFormat('yyyy-MM-dd').format(a.time) == todayStr).length;
+    if (todayAppointmentsCount == 0) todayAppointmentsCount = branchAppts.length;
+    todayClientsCount = visibleCustomers.length;
+    staffCompletedCount = completedCount;
+    todayProfit = (revToday - branchTotalExpenses).clamp(0.0, double.infinity);
+  }
+
   void setActiveBranch(SalonBranch branch) {
     activeBranch = branch;
     if (branch.chairs > 0) {
@@ -1017,6 +1125,7 @@ class RuvexiAppState extends ChangeNotifier {
     if (branch.phone.trim().isNotEmpty) {
       salonPhone = branch.phone.trim();
     }
+    recalculateBranchMetrics();
     notifyListeners();
   }
 
@@ -1176,6 +1285,7 @@ class RuvexiAppState extends ChangeNotifier {
         'taxPercent': 0.0,
         'paymentMethod': method,
         'status': 'paid',
+        'branchId': activeBranch?.id ?? '',
       });
     } catch (e) {
       debugPrint("createInvoice remote sync notice: $e");
@@ -1183,6 +1293,7 @@ class RuvexiAppState extends ChangeNotifier {
 
     final invRecord = <String, dynamic>{
       'invoiceNumber': invNum,
+      'branchId': activeBranch?.id ?? '',
       'customerName': posSelectedCustomer?.name ?? 'Walk-in Guest',
       'customerPhone': posSelectedCustomer?.phone ?? '',
       'items': itemsPayload,
@@ -1202,8 +1313,7 @@ class RuvexiAppState extends ChangeNotifier {
     invoices.removeWhere((i) => i['invoiceNumber'] == invNum);
     invoices.insert(0, invRecord);
 
-    todayRevenue += total;
-    todayClientsCount += 1;
+    recalculateBranchMetrics();
 
     // Reset customer selection & billing session cleanly
     posSelectedCustomer = null;
@@ -1233,6 +1343,9 @@ class RuvexiAppState extends ChangeNotifier {
   }
 
   Future<void> addAppointment(Appointment appt) async {
+    final effectiveBranchId = appt.branchId.isNotEmpty
+        ? appt.branchId
+        : (activeBranch?.id ?? 'Flagship');
     appointments.insert(0, appt);
     notifyListeners();
     try {
@@ -1249,8 +1362,10 @@ class RuvexiAppState extends ChangeNotifier {
         'notes': appt.notes,
         'source': 'mobile_app',
         'allowDoubleBooking': true,
+        'branchId': effectiveBranchId,
       });
       appointments[0] = Appointment.fromJson(created);
+      recalculateBranchMetrics();
       notifyListeners();
     } catch (e) {
       appointments.remove(appt);
@@ -1279,23 +1394,29 @@ class RuvexiAppState extends ChangeNotifier {
   }
 
   Future<void> addCustomer(Customer customer) async {
-    customers.insert(0, customer);
+    final effectiveBranchId = customer.branchId.isNotEmpty
+        ? customer.branchId
+        : (activeBranch?.id ?? '');
+    final customerToSave = customer.copyWith(branchId: effectiveBranchId);
+    customers.insert(0, customerToSave);
     notifyListeners();
     try {
       final created = await api.createCustomer({
-        'name': customer.name,
-        'phone': customer.phone,
-        'email': customer.email,
-        'gender': customer.gender,
-        'birthday': customer.dateOfBirth,
-        'dob': customer.dateOfBirth,
-        'formulaNotes': customer.formulaNotes ?? '',
-        'vipTier': customer.membership,
+        'name': customerToSave.name,
+        'phone': customerToSave.phone,
+        'email': customerToSave.email,
+        'gender': customerToSave.gender,
+        'birthday': customerToSave.dateOfBirth,
+        'dob': customerToSave.dateOfBirth,
+        'formulaNotes': customerToSave.formulaNotes ?? '',
+        'vipTier': customerToSave.membership,
+        'branchId': effectiveBranchId,
       });
       customers[0] = Customer.fromJson(created);
+      recalculateBranchMetrics();
       notifyListeners();
     } catch (e) {
-      customers.remove(customer);
+      customers.remove(customerToSave);
       lastSyncError = e.toString();
       notifyListeners();
     }
@@ -1335,6 +1456,31 @@ class RuvexiAppState extends ChangeNotifier {
       notifyListeners();
       try {
         await api.updateCustomer(customerId, {'formulaNotes': formulaNotes});
+      } catch (e) {
+        lastSyncError = e.toString();
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> updateCustomerMembership(String customerId, String newMembership, {int? loyaltyPoints}) async {
+    final idx = customers.indexWhere((c) => c.id == customerId);
+    if (idx >= 0) {
+      final old = customers[idx];
+      customers[idx] = old.copyWith(
+        membership: newMembership,
+        loyaltyPoints: loyaltyPoints ?? old.loyaltyPoints,
+      );
+      if (posSelectedCustomer?.id == customerId) {
+        posSelectedCustomer = customers[idx];
+      }
+      notifyListeners();
+      try {
+        final Map<String, dynamic> body = {'vipTier': newMembership};
+        if (loyaltyPoints != null) {
+          body['loyaltyPoints'] = loyaltyPoints;
+        }
+        await api.updateCustomer(customerId, body);
       } catch (e) {
         lastSyncError = e.toString();
         notifyListeners();

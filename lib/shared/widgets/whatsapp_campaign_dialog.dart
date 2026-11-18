@@ -60,7 +60,7 @@ void showWhatsAppCampaignRunnerModal(BuildContext context, RuvexiAppState appSta
         final salonName = appState.salonName;
         final bookingUrl = "${RuvexiApiConfig.webAppUrl}/book";
 
-        final targetList = appState.customers.where((c) {
+        final targetList = appState.visibleCustomers.where((c) {
           final digits = c.phone.replaceAll(RegExp(r'\D'), '');
           if (digits.length < 10) return false;
           if (targetAudience == "vip") {
@@ -168,7 +168,7 @@ void showWhatsAppCampaignRunnerModal(BuildContext context, RuvexiAppState appSta
                   Row(
                     children: [
                       buildFilterPill(
-                        label: "All (${appState.customers.length})",
+                        label: "All (${appState.visibleCustomers.length})",
                         isSelected: targetAudience == "all",
                         onTap: () => setSheetState(() => targetAudience = "all"),
                       ),

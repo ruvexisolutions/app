@@ -26,6 +26,17 @@ class _StaffBillingScreenState extends State<StaffBillingScreen> {
   double _discount = 0.0;
   String _selectedStylist = "Manoj K";
 
+  @override
+  void initState() {
+    super.initState();
+    final customer = widget.appState.posSelectedCustomer;
+    if (customer != null && customer.hasActiveMembership && customer.membershipDiscountPercent > 0) {
+      final subtotal = widget.appState.cartSubtotal;
+      _discount = ((subtotal * customer.membershipDiscountPercent) / 100.0).roundToDouble();
+      widget.appState.discountAmount = _discount;
+    }
+  }
+
   void _showStylistPickerSheet() {
     showModalBottomSheet(
       context: context,
@@ -176,7 +187,14 @@ class _StaffBillingScreenState extends State<StaffBillingScreen> {
     CustomerPickerSheet.show(
       context: context,
       appState: widget.appState,
-      onSelected: (_) {
+      onSelected: (c) {
+        if (c != null && c.hasActiveMembership && c.membershipDiscountPercent > 0) {
+          final subtotal = widget.appState.cartSubtotal;
+          setState(() {
+            _discount = ((subtotal * c.membershipDiscountPercent) / 100.0).roundToDouble();
+            widget.appState.discountAmount = _discount;
+          });
+        }
         setState(() {});
       },
     );
@@ -431,33 +449,95 @@ class _StaffBillingScreenState extends State<StaffBillingScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF101311),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.white.withOpacity(0.08)),
+                              border: Border.all(
+                                color: customer != null && customer.hasActiveMembership
+                                    ? const Color(0xFFFACC15).withValues(alpha: 0.5)
+                                    : Colors.white.withOpacity(0.08),
+                              ),
                             ),
-                            child: Row(
+                            child: Column(
                               children: [
-                                CircleAvatar(
-                                  radius: 19,
-                                  backgroundColor: const Color(0xFF312E81),
-                                  child: Text(
-                                    customerName[0],
-                                    style: const TextStyle(color: Color(0xFFA5B4FC), fontWeight: FontWeight.bold, fontSize: 14),
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 19,
+                                      backgroundColor: customer != null && customer.hasActiveMembership
+                                          ? const Color(0xFF2B2612)
+                                          : const Color(0xFF312E81),
+                                      child: Text(
+                                        customerName[0],
+                                        style: TextStyle(
+                                          color: customer != null && customer.hasActiveMembership
+                                              ? const Color(0xFFFACC15)
+                                              : const Color(0xFFA5B4FC),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(customerName, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                                              if (customer != null && customer.hasActiveMembership) ...[
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF2B2612),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                    border: Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.4)),
+                                                  ),
+                                                  child: Text(
+                                                    customer.membership,
+                                                    style: const TextStyle(color: Color(0xFFFACC15), fontSize: 9.5, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(customerPhone, style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.white54, size: 18),
+                                      onPressed: () => widget.appState.setPosCustomer(null),
+                                    ),
+                                  ],
+                                ),
+                                if (customer != null && customer.hasActiveMembership) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1A1A12),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.25)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.stars_rounded, color: Color(0xFFFACC15), size: 14),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            "Universal All-Branches Member: Auto ${customer.membershipDiscountPercent.toInt()}% discount active",
+                                            style: const TextStyle(
+                                              color: Color(0xFFFACC15),
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(customerName, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 2),
-                                      Text(customerPhone, style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                                  onPressed: () => widget.appState.setPosCustomer(null),
-                                ),
+                                ],
                               ],
                             ),
                           ),

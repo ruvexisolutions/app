@@ -269,15 +269,54 @@ class _PosBillingScreenState extends State<PosBillingScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "Select Customer",
-                                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                              Row(
+                                children: [
+                                  Text(
+                                    "Select Customer",
+                                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                                  ),
+                                  if (customer != null && customer.hasActiveMembership) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFACC15).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.stars_rounded, color: Color(0xFFFACC15), size: 10),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            "${customer.membership} (All Branches)",
+                                            style: const TextStyle(color: Color(0xFFFACC15), fontSize: 9, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 customerDisplayName,
                                 style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                               ),
+                              if (customer != null) ...[
+                                const SizedBox(height: 1),
+                                Text(
+                                  customer.hasActiveMembership
+                                      ? "${customer.phone.isNotEmpty ? customer.phone : 'Universal Client'} • ${customer.membershipDiscountPercent.toInt()}% Auto Discount"
+                                      : (customer.phone.isNotEmpty ? customer.phone : "Registered Client"),
+                                  style: TextStyle(
+                                    color: customer.hasActiveMembership ? const Color(0xFF22C55E) : Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 11,
+                                    fontWeight: customer.hasActiveMembership ? FontWeight.w500 : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

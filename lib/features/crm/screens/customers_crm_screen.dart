@@ -162,6 +162,7 @@ class _CustomersCrmScreenState extends State<CustomersCrmScreen> {
                     visitsCount: 1,
                     totalSpent: 0,
                     tag: "New",
+                    branchId: widget.appState.activeBranch?.id ?? "",
                   );
                 widget.appState.addCustomer(newCustomer);
                 Navigator.pop(ctx);
@@ -415,7 +416,7 @@ class _CustomersCrmScreenState extends State<CustomersCrmScreen> {
           final bookingUrl = "${RuvexiApiConfig.webAppUrl}/book";
 
           // Filter eligible clients with >=10 digits phone
-          final targetList = widget.appState.customers.where((c) {
+          final targetList = widget.appState.visibleCustomers.where((c) {
             final digits = c.phone.replaceAll(RegExp(r'\D'), '');
             if (digits.length < 10) return false;
             if (targetAudience == "vip") {
@@ -525,7 +526,7 @@ class _CustomersCrmScreenState extends State<CustomersCrmScreen> {
                     Row(
                       children: [
                         _buildFilterPill(
-                          label: "All (${widget.appState.customers.length})",
+                          label: "All (${widget.appState.visibleCustomers.length})",
                           isSelected: targetAudience == "all",
                           onTap: () => setSheetState(() => targetAudience = "all"),
                         ),
@@ -947,7 +948,7 @@ class _CustomersCrmScreenState extends State<CustomersCrmScreen> {
               child: ListenableBuilder(
                 listenable: widget.appState,
                 builder: (context, _) {
-                  final filtered = widget.appState.customers.where((c) {
+                  final filtered = widget.appState.visibleCustomers.where((c) {
                     final matchesQuery = c.name.toLowerCase().contains(_searchQuery) || c.phone.contains(_searchQuery);
                     if (!matchesQuery) return false;
                     if (_selectedFilterIndex == 1) return c.tag == "Regular";

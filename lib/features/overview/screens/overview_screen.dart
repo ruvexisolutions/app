@@ -735,8 +735,8 @@ class OverviewDashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // Appointments from state
-        ...appState.appointments.take(3).map((appt) {
+        // Appointments from state (Scoped to Active Branch)
+        ...appState.branchAppointments.take(3).map((appt) {
           Color statusBg = const Color(0xFF14532D);
           Color statusBorder = const Color(0xFF22C55E);
           Color statusText = const Color(0xFF4ADE80);

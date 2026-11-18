@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
+import 'package:ruvexi_mobile/shared/widgets/branch_switcher_sheet.dart';
 import 'package:ruvexi_mobile/features/expenses/screens/expenses_screen.dart';
 import 'package:ruvexi_mobile/features/staff/screens/staff_management_screen.dart';
 import 'package:ruvexi_mobile/features/inventory/screens/inventory_screen.dart';
@@ -67,164 +68,212 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF060706),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF060706),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
-        title: const Text(
-          "Reports",
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF141815),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-            ),
-            child: Row(
+    return ListenableBuilder(
+      listenable: widget.appState,
+      builder: (context, _) {
+        final activeBranch = widget.appState.activeBranch;
+        final branchInvs = widget.appState.branchInvoices;
+        double branchRev = branchInvs
+            .where((i) => (i['status'] ?? '').toString().toLowerCase() == 'paid')
+            .fold(0.0, (sum, i) => sum + ((i['grandTotal'] is num) ? (i['grandTotal'] as num).toDouble() : 0.0));
+        if (branchRev == 0.0 && widget.appState.todayRevenue > 0) {
+          branchRev = widget.appState.todayRevenue;
+        }
+
+        final branchExp = widget.appState.branchTotalExpenses;
+        final branchProfit = (branchRev - branchExp).clamp(0.0, double.infinity);
+        final branchServicesCount = widget.appState.branchAppointments.length;
+        final branchClientsCount = widget.appState.visibleCustomers.length;
+        final branchChairs = widget.appState.salonChairs > 0 ? widget.appState.salonChairs : 8;
+        final occupancyPct = widget.appState.seatsInUseCount > 0
+            ? ((widget.appState.seatsInUseCount / branchChairs) * 100).toInt().clamp(10, 100)
+            : 74;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF060706),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF060706),
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            leading: Navigator.canPop(context)
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                : null,
+            title: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(_selectedPeriod, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 14),
+                const Text(
+                  "Reports",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                if (widget.appState.branches.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  BranchTopDropdownPill(appState: widget.appState),
+                ],
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white70, size: 20),
-            tooltip: "Salon Alerts",
-            onPressed: () => showSalonNotificationModal(context, widget.appState),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Filter chips: Revenue, Services, Staff, Inventory
-            Row(
-              children: [
-                _buildChip(0, "Revenue"),
-                const SizedBox(width: 8),
-                _buildChip(1, "Services"),
-                const SizedBox(width: 8),
-                _buildChip(2, "Staff"),
-                const SizedBox(width: 8),
-                _buildChip(3, "Inventory"),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Hero Card with Total Revenue & Custom Wavy Line Chart
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF101311),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+            actions: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141815),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_selectedPeriod, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 14),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: Colors.white70, size: 20),
+                tooltip: "Salon Alerts",
+                onPressed: () => showSalonNotificationModal(context, widget.appState),
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Filter chips: Revenue, Services, Staff, Inventory
+                Row(
+                  children: [
+                    _buildChip(0, "Revenue"),
+                    const SizedBox(width: 8),
+                    _buildChip(1, "Services"),
+                    const SizedBox(width: 8),
+                    _buildChip(2, "Staff"),
+                    const SizedBox(width: 8),
+                    _buildChip(3, "Inventory"),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Hero Card with Branch Total Revenue & Custom Wavy Line Chart
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF101311),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            "Total Revenue",
-                            style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    "Total Revenue",
+                                    style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
+                                  ),
+                                  if (activeBranch != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E2620),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        activeBranch.name,
+                                        style: const TextStyle(color: Color(0xFF22C55E), fontSize: 9.5, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "₹${branchRev.toInt()}",
+                                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            "₹4,86,200",
-                            style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF122C1A),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              "+12.4%",
+                              style: TextStyle(color: Color(0xFF22C55E), fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF122C1A),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          "+12.4%",
-                          style: TextStyle(color: Color(0xFF22C55E), fontSize: 12, fontWeight: FontWeight.bold),
+                      const SizedBox(height: 14),
+
+                      // Neon Green Wavy Line Chart
+                      SizedBox(
+                        height: 80,
+                        width: double.infinity,
+                        child: CustomPaint(
+                          painter: _NeonWavePainter(),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                ),
+                const SizedBox(height: 16),
 
-                  // Neon Green Wavy Line Chart
-                  SizedBox(
-                    height: 80,
-                    width: double.infinity,
-                    child: CustomPaint(
-                      painter: _NeonWavePainter(),
+                // 4 Metric cards in 2x2 grid (Scoped to Active Branch)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricCard(
+                        icon: Icons.calendar_today_outlined,
+                        value: "$branchServicesCount",
+                        label: "Services",
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 4 Metric cards in 2x2 grid
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.calendar_today_outlined,
-                    value: "1,248",
-                    label: "Services",
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMetricCard(
+                        icon: Icons.people_outline_rounded,
+                        value: "$branchClientsCount",
+                        label: "Branch Clients",
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.people_outline_rounded,
-                    value: "386",
-                    label: "Clients",
-                  ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricCard(
+                        icon: Icons.trending_up_rounded,
+                        value: "₹${branchProfit.toInt()}",
+                        label: "Profit",
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMetricCard(
+                        icon: Icons.access_time_rounded,
+                        value: "$occupancyPct%",
+                        label: "Occupancy",
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.trending_up_rounded,
-                    value: "₹1,26,800",
-                    label: "Profit",
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricCard(
-                    icon: Icons.access_time_rounded,
-                    value: "76%",
-                    label: "Occupancy",
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
             // Drill-down list items
             _buildDrillDownTile("Sales Report", Icons.receipt_long_outlined, () => _showReportDetailsModal("Sales Report")),
@@ -251,6 +300,8 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
           ],
         ),
       ),
+    );
+      },
     );
   }
 

@@ -46,6 +46,89 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
+  void _showUpgradeMembershipSheet() {
+    final tiers = [
+      {"name": "VIP / Diamond Member", "discount": "20% off all services enterprise-wide", "color": const Color(0xFFFACC15)},
+      {"name": "Platinum Member", "discount": "15% off all services enterprise-wide", "color": const Color(0xFFA855F7)},
+      {"name": "Gold Member", "discount": "10% off all services enterprise-wide", "color": const Color(0xFFEAB308)},
+      {"name": "Silver Regular", "discount": "5% off all services enterprise-wide", "color": const Color(0xFF94A3B8)},
+      {"name": "Standard Client", "discount": "No automatic cross-branch discount", "color": Colors.white54},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF101311),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Universal Membership Tier",
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Valid across all branches. Selected tier automatically applies discount at every checkout.",
+              style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            ...tiers.map((t) {
+              final isCurrent = _customer.membership.toLowerCase() == (t["name"] as String).toLowerCase();
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: isCurrent ? const Color(0xFF162419) : const Color(0xFF141815),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isCurrent ? const Color(0xFF22C55E) : Colors.white.withOpacity(0.06),
+                  ),
+                ),
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.stars_rounded, color: t["color"] as Color, size: 22),
+                  title: Text(
+                    t["name"] as String,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                  ),
+                  subtitle: Text(
+                    t["discount"] as String,
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                  ),
+                  trailing: isCurrent
+                      ? const Icon(Icons.check_circle, color: Color(0xFF22C55E), size: 20)
+                      : const Icon(Icons.chevron_right, color: Colors.white30, size: 18),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final newTier = t["name"] as String;
+                    await widget.appState.updateCustomerMembership(_customer.id, newTier);
+                    setState(() {
+                      _customer = _customer.copyWith(membership: newTier);
+                    });
+                    _showActionToast("Membership updated to $newTier across all branches!");
+                  },
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showScheduleFollowUpSheet() {
     int selectedWeeks = 3;
     final catalog = widget.appState.catalog;
@@ -537,9 +620,70 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         // Membership Row
         _buildInfoRow(
           icon: Icons.verified_outlined,
-          title: "Membership",
+          title: "Membership Tier",
           value: _customer.membership,
-          valueColor: const Color(0xFF22C55E),
+          valueColor: _customer.hasActiveMembership ? const Color(0xFFFACC15) : const Color(0xFF22C55E),
+          onTap: _showUpgradeMembershipSheet,
+        ),
+        const SizedBox(height: 8),
+
+        // Universal Cross-Branch Access Badge
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: _customer.hasActiveMembership ? const Color(0xFF1A1A12) : const Color(0xFF121413),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _customer.hasActiveMembership
+                  ? const Color(0xFFFACC15).withOpacity(0.35)
+                  : Colors.white.withOpacity(0.06),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.all_inclusive_rounded,
+                color: _customer.hasActiveMembership ? const Color(0xFFFACC15) : Colors.white38,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _customer.hasActiveMembership
+                          ? "Universal Branch Access Active"
+                          : "Cross-Branch Recognition",
+                      style: TextStyle(
+                        color: _customer.hasActiveMembership ? const Color(0xFFFACC15) : Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _customer.hasActiveMembership
+                          ? "Recognized at every branch with ${_customer.membershipDiscountPercent.toInt()}% automatic member discount"
+                          : "Customer profile and history are synced across all branches",
+                      style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 10.5),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: _showUpgradeMembershipSheet,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF22C55E),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text("Change", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -735,35 +879,39 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     required String title,
     required String value,
     Color? valueColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF101311),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF22C55E), size: 20),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF101311),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFF22C55E), size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+              ),
             ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: valueColor ?? Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
+            Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(Icons.chevron_right, color: Colors.white38, size: 18),
-        ],
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right, color: Colors.white38, size: 18),
+          ],
+        ),
       ),
     );
   }

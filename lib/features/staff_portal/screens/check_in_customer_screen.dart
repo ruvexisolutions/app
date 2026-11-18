@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/widgets/category_service_picker_sheet.dart';
+import 'package:ruvexi_mobile/core/widgets/customer_picker_sheet.dart';
 import 'package:ruvexi_mobile/shared/widgets/ruvexi_logo.dart';
 import 'package:ruvexi_mobile/features/staff_portal/screens/seats_stations_screen.dart';
 import 'package:ruvexi_mobile/features/staff_portal/screens/in_salon_screen.dart';
@@ -31,6 +32,54 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
   String? _selectedSeatId;
   String _selectedGender = "Female";
   DateTime? _selectedDob;
+  Customer? _matchedCustomer;
+
+  void _onCustomerDetailsChanged() {
+    final rawPhone = _phoneCtrl.text.replaceAll(RegExp(r'\D'), '');
+    final rawName = _nameCtrl.text.trim().toLowerCase();
+
+    Customer? match;
+    if (rawPhone.length >= 7) {
+      match = widget.appState.customers.cast<Customer?>().firstWhere(
+        (c) => c != null && c.phone.replaceAll(RegExp(r'\D'), '').contains(rawPhone),
+        orElse: () => null,
+      );
+    }
+    if (match == null && rawName.length >= 3) {
+      match = widget.appState.customers.cast<Customer?>().firstWhere(
+        (c) => c != null && c.name.toLowerCase() == rawName,
+        orElse: () => null,
+      );
+    }
+
+    if (_matchedCustomer?.id != match?.id) {
+      setState(() {
+        _matchedCustomer = match;
+      });
+    }
+  }
+
+  void _selectExistingCustomer() {
+    CustomerPickerSheet.show(
+      context: context,
+      appState: widget.appState,
+      onSelected: (c) {
+        if (c != null) {
+          setState(() {
+            _matchedCustomer = c;
+            _nameCtrl.text = c.name;
+            _phoneCtrl.text = c.phone;
+            if (c.gender.isNotEmpty) _selectedGender = c.gender;
+            if (c.dateOfBirth.isNotEmpty) {
+              try {
+                _selectedDob = DateTime.parse(c.dateOfBirth);
+              } catch (_) {}
+            }
+          });
+        }
+      },
+    );
+  }
 
   Future<void> _pickDob() async {
     final now = DateTime.now();
@@ -62,10 +111,14 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
   void initState() {
     super.initState();
     _selectedSeatId = widget.preselectedSeatId;
+    _nameCtrl.addListener(_onCustomerDetailsChanged);
+    _phoneCtrl.addListener(_onCustomerDetailsChanged);
   }
 
   @override
   void dispose() {
+    _nameCtrl.removeListener(_onCustomerDetailsChanged);
+    _phoneCtrl.removeListener(_onCustomerDetailsChanged);
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _notesCtrl.dispose();
@@ -153,6 +206,10 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
     final seatToAssign = _selectedSeatId ?? "Waiting";
 
     final dobStr = _selectedDob != null ? DateFormat('yyyy-MM-dd').format(_selectedDob!) : "";
+    if (_matchedCustomer != null) {
+      widget.appState.setPosCustomer(_matchedCustomer);
+    }
+
     widget.appState.checkInCustomer(
       customerName: name,
       phone: _phoneCtrl.text.trim(),
@@ -225,6 +282,142 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                 child: Column(
                   children: [
+                    // Universal Client Quick Select
+                    GestureDetector(
+                      onTap: _selectExistingCustomer,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF141815),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _matchedCustomer != null
+                                ? const Color(0xFF22C55E).withValues(alpha: 0.5)
+                                : Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.people_alt_outlined, color: Color(0xFF22C55E), size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _matchedCustomer != null
+                                        ? "Client: ${_matchedCustomer!.name}"
+                                        : "Search Existing / Universal Client",
+                                    style: TextStyle(
+                                      color: _matchedCustomer != null ? Colors.white : Colors.white70,
+                                      fontSize: 13,
+                                      fontWeight: _matchedCustomer != null ? FontWeight.bold : FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    _matchedCustomer != null
+                                        ? "${_matchedCustomer!.phone} • ${_matchedCustomer!.membership}"
+                                        : "Recognize client across all salon branches",
+                                    style: TextStyle(
+                                      color: _matchedCustomer != null
+                                          ? const Color(0xFF22C55E).withValues(alpha: 0.8)
+                                          : Colors.white.withValues(alpha: 0.4),
+                                      fontSize: 10.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF22C55E).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _matchedCustomer != null ? "Change" : "Browse",
+                                style: const TextStyle(
+                                  color: Color(0xFF22C55E),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Universal Cross-Branch Membership Recognized Banner
+                    if (_matchedCustomer != null && _matchedCustomer!.hasActiveMembership) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1A12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFACC15).withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.stars_rounded, color: Color(0xFFFACC15), size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        _matchedCustomer!.membership,
+                                        style: const TextStyle(
+                                          color: Color(0xFFFACC15),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF22C55E).withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          "CROSS-BRANCH ACCESS",
+                                          style: TextStyle(
+                                            color: Color(0xFF22C55E),
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    "Membership recognized from salon network • ${_matchedCustomer!.membershipDiscountPercent.toInt()}% Member privilege will apply automatically at checkout!",
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.75),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     // Customer Name *
                     _buildTextField(
                       controller: _nameCtrl,

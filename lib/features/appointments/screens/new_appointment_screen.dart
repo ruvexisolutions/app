@@ -23,8 +23,8 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.appState.customers.isNotEmpty) {
-      _selectedCustomer = widget.appState.customers.first;
+    if (widget.appState.visibleCustomers.isNotEmpty) {
+      _selectedCustomer = widget.appState.visibleCustomers.first;
     }
     if (widget.appState.catalog.isNotEmpty) {
       _selectedService = widget.appState.catalog.first;
@@ -58,7 +58,7 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 14),
-            ...widget.appState.customers.map(
+            ...widget.appState.visibleCustomers.map(
               (c) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
@@ -185,6 +185,7 @@ class _NewAppointmentScreenState extends State<NewAppointmentScreen> {
       price: _selectedService!.price,
       status: "Confirmed",
       notes: _notesController.text.isNotEmpty ? _notesController.text : "Client prefers mild products.",
+      branchId: widget.appState.activeBranch?.id ?? "",
     );
 
     widget.appState.addAppointment(newAppt);

@@ -5,6 +5,7 @@ import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 import 'package:ruvexi_mobile/features/appointments/screens/appointment_details_screen.dart';
 import 'package:ruvexi_mobile/features/appointments/screens/new_appointment_screen.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
+import 'package:ruvexi_mobile/shared/widgets/branch_switcher_sheet.dart';
 
 class AppointmentsCalendarScreen extends StatefulWidget {
   final RuvexiAppState appState;
@@ -124,17 +125,24 @@ class _AppointmentsCalendarScreenState extends State<AppointmentsCalendarScreen>
               ),
             ),
 
-            // Title
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
-              child: Text(
-                "Appointments",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.3,
-                ),
+            // Title + Branch Pill
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Appointments",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (widget.appState.branches.isNotEmpty)
+                    BranchTopDropdownPill(appState: widget.appState),
+                ],
               ),
             ),
 
@@ -233,7 +241,7 @@ class _AppointmentsCalendarScreenState extends State<AppointmentsCalendarScreen>
               child: ListenableBuilder(
                 listenable: widget.appState,
                 builder: (context, _) {
-                  final list = widget.appState.appointments.where((a) {
+                  final list = widget.appState.branchAppointments.where((a) {
                     if (_selectedFilterTab == 0) return a.status != "Completed" && a.status != "Cancelled";
                     if (_selectedFilterTab == 1) return a.status == "Upcoming";
                     if (_selectedFilterTab == 2) return a.status == "Completed";
