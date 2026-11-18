@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/widgets/category_service_picker_sheet.dart';
 import 'package:ruvexi_mobile/shared/widgets/ruvexi_logo.dart';
@@ -28,6 +29,34 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
   final List<ServiceItem> _selectedServices = [];
   String _assignedStaff = "Manoj K";
   String? _selectedSeatId;
+  String _selectedGender = "Female";
+  DateTime? _selectedDob;
+
+  Future<void> _pickDob() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDob ?? DateTime(now.year - 24, now.month, now.day),
+      firstDate: DateTime(1940),
+      lastDate: now,
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF22C55E),
+              onPrimary: Colors.black,
+              surface: Color(0xFF141815),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _selectedDob = picked);
+    }
+  }
 
   @override
   void initState() {
@@ -123,9 +152,12 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
 
     final seatToAssign = _selectedSeatId ?? "Waiting";
 
+    final dobStr = _selectedDob != null ? DateFormat('yyyy-MM-dd').format(_selectedDob!) : "";
     widget.appState.checkInCustomer(
       customerName: name,
       phone: _phoneCtrl.text.trim(),
+      gender: _selectedGender,
+      dateOfBirth: dobStr,
       services: servicesToAssign,
       assignedStaff: _assignedStaff,
       seatId: seatToAssign,
@@ -205,8 +237,74 @@ class _CheckInCustomerScreenState extends State<CheckInCustomerScreen> {
                     _buildTextField(
                       controller: _phoneCtrl,
                       icon: Icons.phone_outlined,
-                      hint: "Phone Number",
+                      hint: "Phone Number (Contact)",
                       keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Gender Selector
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF101311),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.transgender_rounded, color: Colors.white38, size: 18),
+                              const SizedBox(width: 8),
+                              Text("Gender", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: ["Female", "Male", "Other"].map((g) {
+                              final isSel = _selectedGender == g;
+                              return Expanded(
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _selectedGender = g),
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSel ? const Color(0xFF1B3822) : const Color(0xFF161A17),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isSel ? const Color(0xFF22C55E) : Colors.transparent,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      g,
+                                      style: TextStyle(
+                                        color: isSel ? const Color(0xFF22C55E) : Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Date of Birth (DOB) Picker
+                    _buildPickerTile(
+                      icon: Icons.cake_outlined,
+                      label: _selectedDob != null
+                          ? "DOB: ${DateFormat('dd MMM yyyy').format(_selectedDob!)}"
+                          : "Date of Birth (Optional)",
+                      hasValue: _selectedDob != null,
+                      onTap: _pickDob,
                     ),
                     const SizedBox(height: 12),
 

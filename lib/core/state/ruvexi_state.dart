@@ -71,6 +71,8 @@ class Customer {
   final String name;
   final String phone;
   final String email;
+  final String gender;
+  final String dateOfBirth;
   final int visitsCount;
   final double totalSpent;
   final int loyaltyPoints;
@@ -83,6 +85,8 @@ class Customer {
     required this.name,
     required this.phone,
     required this.email,
+    this.gender = "Female",
+    this.dateOfBirth = "",
     required this.visitsCount,
     required this.totalSpent,
     this.loyaltyPoints = 50,
@@ -105,6 +109,8 @@ class Customer {
       name: (json['name'] ?? 'Guest').toString(),
       phone: (json['phone'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
+      gender: (json['gender'] ?? 'Female').toString(),
+      dateOfBirth: (json['birthday'] ?? json['dateOfBirth'] ?? json['dob'] ?? '').toString(),
       visitsCount: visitsInt,
       totalSpent: spent is num ? spent.toDouble() : double.tryParse('$spent') ?? 0.0,
       loyaltyPoints: (json['loyaltyPoints'] is num)
@@ -263,6 +269,7 @@ class InventoryItem {
   int stock;
   final int minAlert;
   final String unit;
+  final double price;
 
   InventoryItem({
     required this.id,
@@ -272,11 +279,13 @@ class InventoryItem {
     required this.stock,
     required this.minAlert,
     this.unit = "pcs",
+    this.price = 0.0,
   });
 
   bool get isLowStock => stock <= minAlert;
 
   factory InventoryItem.fromJson(Map<String, dynamic> json) {
+    final priceVal = json['retailPrice'] ?? json['sellingPrice'] ?? json['price'] ?? 0.0;
     return InventoryItem(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? 'Product').toString(),
@@ -289,6 +298,7 @@ class InventoryItem {
           ? (json['minThreshold'] as num).toInt()
           : int.tryParse('${json['minThreshold']}') ?? 5,
       unit: (json['unit'] ?? 'pcs').toString(),
+      price: priceVal is num ? priceVal.toDouble() : double.tryParse('$priceVal') ?? 0.0,
     );
   }
 }
@@ -345,10 +355,40 @@ class OfferItem {
 }
 
 class CartItem {
-  final ServiceItem service;
+  final ServiceItem? _service;
+  final InventoryItem? product;
+  final String? customName;
+  final double? customPrice;
+  final String type; // 'service' or 'product'
+  String? staffName; // Assigned Stylist
   int quantity;
 
-  CartItem({required this.service, this.quantity = 1});
+  CartItem({
+    ServiceItem? service,
+    this.product,
+    this.customName,
+    this.customPrice,
+    String? type,
+    this.staffName,
+    this.quantity = 1,
+  })  : _service = service,
+        type = type ?? (product != null ? 'product' : 'service');
+
+  ServiceItem get service =>
+      _service ??
+      ServiceItem(
+        id: product?.id ?? '',
+        name: name,
+        category: category,
+        price: price,
+        durationMinutes: 15,
+      );
+
+  bool get isProduct => type == 'product' || product != null;
+  String get name => _service?.name ?? product?.name ?? customName ?? 'Item';
+  double get price => _service?.price ?? product?.price ?? customPrice ?? 0.0;
+  String get category => _service?.category ?? product?.category ?? 'General';
+  String get id => _service?.id ?? product?.id ?? '';
 }
 
 class SalonSeat {
@@ -392,6 +432,58 @@ class InSalonClient {
 
   String get servicesSummary => services.map((s) => s.name).join(" + ");
   double get totalServiceAmount => services.fold(0.0, (sum, s) => sum + s.price);
+}
+
+class SalonBranch {
+  final String id;
+  final String name;
+  final String code;
+  final String address;
+  final String city;
+  final String phone;
+  final String email;
+  final int chairs;
+  final bool isActive;
+
+  SalonBranch({
+    required this.id,
+    required this.name,
+    this.code = "",
+    this.address = "",
+    this.city = "",
+    this.phone = "",
+    this.email = "",
+    this.chairs = 6,
+    this.isActive = true,
+  });
+
+  factory SalonBranch.fromJson(Map<String, dynamic> json) {
+    return SalonBranch(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? 'Branch Studio').toString(),
+      code: (json['code'] ?? '').toString(),
+      address: (json['address'] ?? '').toString(),
+      city: (json['city'] ?? '').toString(),
+      phone: (json['phone'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      chairs: (json['chairs'] is num)
+          ? (json['chairs'] as num).toInt()
+          : int.tryParse('${json['chairs']}') ?? 6,
+      isActive: json['isActive'] != false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'code': code,
+    'address': address,
+    'city': city,
+    'phone': phone,
+    'email': email,
+    'chairs': chairs,
+    'isActive': isActive,
+  };
 }
 
 class RuvexiAppState extends ChangeNotifier {
@@ -454,6 +546,8 @@ class RuvexiAppState extends ChangeNotifier {
   final List<OfferItem> offers = [];
   final List<CartItem> posCart = [];
   final List<Map<String, dynamic>> invoices = [];
+  final List<SalonBranch> branches = [];
+  SalonBranch? activeBranch;
 
   double discountAmount = 0.0;
 
@@ -519,6 +613,8 @@ class RuvexiAppState extends ChangeNotifier {
     inSalonClients.clear();
     seats.clear();
     posCart.clear();
+    branches.clear();
+    activeBranch = null;
   }
 
   void _applyUserAndSalon(Map<String, dynamic>? userMap, Map<String, dynamic>? salonMap) {
@@ -681,9 +777,22 @@ class RuvexiAppState extends ChangeNotifier {
 
       final rawServices = (data['services'] as List?) ?? [];
       final parsedServices = rawServices.whereType<Map>().map((m) => ServiceItem.fromJson(Map<String, dynamic>.from(m))).toList();
+
+      final mergedCatalog = <String, ServiceItem>{};
+      // 1. Preload full 125-item OLG Professional Unisex Salon & HairFixing catalog
+      for (final s in defaultOlgCatalog) {
+        mergedCatalog[s.name.toLowerCase().trim()] = s;
+      }
+      // 2. Layer custom salon services / pricing saved on backend
+      for (final s in parsedServices) {
+        if (s.name.trim().isNotEmpty) {
+          mergedCatalog[s.name.toLowerCase().trim()] = s;
+        }
+      }
+
       catalog
         ..clear()
-        ..addAll(parsedServices.isNotEmpty ? parsedServices : defaultOlgCatalog);
+        ..addAll(mergedCatalog.values);
 
       final rawCustomers = (data['customers'] as List?) ?? [];
       customers
@@ -718,6 +827,16 @@ class RuvexiAppState extends ChangeNotifier {
       } catch (_) {}
 
       try {
+        final rawBranches = await api.fetchBranches();
+        branches
+          ..clear()
+          ..addAll(rawBranches.whereType<Map>().map((m) => SalonBranch.fromJson(Map<String, dynamic>.from(m))));
+        if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
+          activeBranch = branches.first;
+        }
+      } catch (_) {}
+
+      try {
         final sub = await api.fetchSubscriptionStatus();
         subscriptionStatus = (sub['subscriptionStatus'] ?? subscriptionStatus).toString();
         subscriptionPlan = (sub['subscriptionPlan'] ?? subscriptionPlan).toString();
@@ -728,14 +847,15 @@ class RuvexiAppState extends ChangeNotifier {
         conciergeUpiId = (sub['conciergeUpiId'] ?? '').toString();
       } catch (_) {}
 
-      // Sync In-Salon active clients from active "In Service" appointments
-      inSalonClients.clear();
-      int chairIdx = 1;
+      // Preserve existing active walk-ins while syncing appointment-based clients
+      final existingWalkIns = inSalonClients.where((c) => c.status != 'Completed' && c.id.startsWith('ins_')).toList();
+      final List<InSalonClient> updatedClients = [...existingWalkIns];
+      int chairIdx = existingWalkIns.length + 1;
       for (final apt in appointments) {
-        if (apt.status == 'In Service') {
+        if (apt.status == 'In Service' && !updatedClients.any((c) => c.id == apt.id)) {
           final seatId = chairIdx <= salonChairs ? 'S-${chairIdx++}' : 'Waiting';
           final matchedServices = catalog.where((s) => s.name.toLowerCase() == apt.serviceName.toLowerCase()).toList();
-          inSalonClients.add(InSalonClient(
+          updatedClients.add(InSalonClient(
             id: apt.id,
             customerName: apt.customerName,
             phone: apt.customerPhone,
@@ -751,6 +871,9 @@ class RuvexiAppState extends ChangeNotifier {
           ));
         }
       }
+      inSalonClients
+        ..clear()
+        ..addAll(updatedClients);
       _rebuildSeats(salonChairs);
 
       // Compute dashboard KPIs from real server records
@@ -804,30 +927,101 @@ class RuvexiAppState extends ChangeNotifier {
     }
   }
 
-  Future<void> updateSalonProfile({String? name, String? location, String? gstin}) async {
+  Future<void> updateSalonProfile({String? name, String? location, String? gstin, String? phone, String? address}) async {
     final trimmedName = name?.trim();
     final trimmedLoc = location?.trim();
     final trimmedGstin = gstin?.trim();
+    final trimmedPhone = phone?.trim();
+    final trimmedAddress = address?.trim();
     final updated = await api.updateSalonSettings({
       if (trimmedName != null && trimmedName.isNotEmpty) 'name': trimmedName,
       if (trimmedLoc != null && trimmedLoc.isNotEmpty) 'city': trimmedLoc,
       if (trimmedGstin != null && trimmedGstin.isNotEmpty) 'gstin': trimmedGstin,
+      if (trimmedPhone != null && trimmedPhone.isNotEmpty) 'phone': trimmedPhone,
+      if (trimmedAddress != null && trimmedAddress.isNotEmpty) 'address': trimmedAddress,
     });
     _applyUserAndSalon(null, updated);
     notifyListeners();
   }
 
-  Future<void> updateSalonPaymentSettings({required String upiId}) async {
+  Future<void> updateSalonPaymentSettings({required String upiId, String? payeeName}) async {
     final trimmedUpi = upiId.trim();
     salonUpiId = trimmedUpi;
     notifyListeners();
     try {
       final updated = await api.updateSalonSettings({
         'upiId': trimmedUpi,
+        if (payeeName != null && payeeName.trim().isNotEmpty) 'upiPayeeName': payeeName.trim(),
       });
       _applyUserAndSalon(null, updated);
       notifyListeners();
     } catch (_) {}
+  }
+
+  Future<void> fetchBranches() async {
+    try {
+      final rawBranches = await api.fetchBranches();
+      branches
+        ..clear()
+        ..addAll(rawBranches.whereType<Map>().map((m) => SalonBranch.fromJson(Map<String, dynamic>.from(m))));
+      if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
+        activeBranch = branches.first;
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error fetching branches: $e");
+    }
+  }
+
+  Future<SalonBranch?> createBranch({
+    required String name,
+    required String city,
+    String? address,
+    String? phone,
+    String? email,
+    int chairs = 6,
+  }) async {
+    final res = await api.createBranch({
+      'name': name.trim(),
+      'city': city.trim(),
+      if (address != null && address.trim().isNotEmpty) 'address': address.trim(),
+      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      'chairs': chairs,
+      'isActive': true,
+    });
+    final newBranch = SalonBranch.fromJson(res);
+    branches.add(newBranch);
+    activeBranch ??= newBranch;
+    notifyListeners();
+    return newBranch;
+  }
+
+  Future<void> updateBranch(String branchId, Map<String, dynamic> data) async {
+    final res = await api.updateBranch(branchId, data);
+    final updated = SalonBranch.fromJson(res);
+    final idx = branches.indexWhere((b) => b.id == branchId);
+    if (idx != -1) {
+      branches[idx] = updated;
+    }
+    if (activeBranch?.id == branchId) {
+      activeBranch = updated;
+    }
+    notifyListeners();
+  }
+
+  Future<void> deleteBranch(String branchId) async {
+    await api.deleteBranch(branchId);
+    branches.removeWhere((b) => b.id == branchId);
+    if (activeBranch?.id == branchId) {
+      activeBranch = branches.isNotEmpty ? branches.first : null;
+    }
+    notifyListeners();
+  }
+
+  void setActiveBranch(SalonBranch branch) {
+    activeBranch = branch;
+    notifyListeners();
   }
 
   int get inSalonActiveCount => inSalonClients.where((c) => c.status == "In Salon").length;
@@ -840,12 +1034,23 @@ class RuvexiAppState extends ChangeNotifier {
 
   double get totalExpenses => expenses.fold(0, (sum, e) => sum + e.amount);
 
-  double get cartSubtotal => posCart.fold(0, (sum, item) => sum + (item.service.price * item.quantity));
-  double get cartTax => ((cartSubtotal - discountAmount).clamp(0, double.infinity)) * 0.18;
-  double get cartTotalPayable => (cartSubtotal - discountAmount + cartTax).clamp(0, double.infinity);
+  double get cartSubtotal => posCart.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+  double get cartTax => 0.0; // Tax removed - owner sets prices and custom discounts directly
+  double get cartTotalPayable => (cartSubtotal - discountAmount).clamp(0, double.infinity);
+
+  void setDiscountAmount(double amount) {
+    discountAmount = amount.clamp(0.0, cartSubtotal);
+    notifyListeners();
+  }
+
+  void setDiscountPercent(double percent) {
+    final pct = percent.clamp(0.0, 100.0);
+    discountAmount = ((cartSubtotal * pct) / 100.0).roundToDouble();
+    notifyListeners();
+  }
 
   void updateCartQuantity(String serviceId, int delta) {
-    final idx = posCart.indexWhere((c) => c.service.id == serviceId);
+    final idx = posCart.indexWhere((c) => c.id == serviceId || c.service.id == serviceId);
     if (idx >= 0) {
       final newQty = posCart[idx].quantity + delta;
       if (newQty <= 0) {
@@ -857,18 +1062,57 @@ class RuvexiAppState extends ChangeNotifier {
     }
   }
 
-  void addServiceToCart(ServiceItem service) {
-    final idx = posCart.indexWhere((c) => c.service.id == service.id);
+  void addServiceToCart(ServiceItem service, {String? staffName}) {
+    final idx = posCart.indexWhere((c) => !c.isProduct && c.id == service.id);
     if (idx >= 0) {
       posCart[idx].quantity += 1;
     } else {
-      posCart.add(CartItem(service: service));
+      posCart.add(CartItem(
+        service: service,
+        type: 'service',
+        staffName: staffName,
+      ));
     }
     notifyListeners();
   }
 
+  void addProductToCart(InventoryItem product, {String? staffName}) {
+    final idx = posCart.indexWhere((c) => c.isProduct && c.id == product.id);
+    if (idx >= 0) {
+      posCart[idx].quantity += 1;
+    } else {
+      posCart.add(CartItem(
+        product: product,
+        type: 'product',
+        staffName: staffName,
+      ));
+    }
+    notifyListeners();
+  }
+
+  Future<void> addProduct(InventoryItem item) async {
+    inventory.insert(0, item);
+    notifyListeners();
+    try {
+      final created = await api.createInventoryItem({
+        'name': item.name,
+        'category': item.category,
+        'retailPrice': item.price,
+        'sellingPrice': item.price,
+        'currentStock': item.stock,
+        'brand': item.sizeVolume,
+        'unit': item.unit,
+      });
+      inventory[0] = InventoryItem.fromJson(created);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error creating product: ');
+    }
+  }
+
   void clearCart() {
     posCart.clear();
+    discountAmount = 0.0;
     notifyListeners();
   }
 
@@ -877,38 +1121,109 @@ class RuvexiAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> completePayment({required String method, double? amount}) async {
+  Future<void> completePayment({
+    required String method,
+    double? amount,
+    String? invoiceNumber,
+    String? staffName,
+  }) async {
     final total = amount ?? cartTotalPayable;
     final itemsPayload = posCart.isNotEmpty
         ? posCart
             .map((c) => {
-                  'serviceId': c.service.id,
-                  'name': c.service.name,
-                  'price': c.service.price,
+                  'id': c.id,
+                  'serviceId': c.isProduct ? null : c.id,
+                  'productId': c.isProduct ? c.id : null,
+                  'name': c.name,
+                  'price': c.price,
                   'quantity': c.quantity,
+                  'type': c.type,
+                  'category': c.category,
+                  'staffName': c.staffName ?? staffName ?? '',
                 })
             .toList()
         : [
-            {'name': 'Salon Service', 'price': total, 'quantity': 1}
+            {'name': 'Salon Service', 'price': total, 'quantity': 1, 'type': 'service', 'staffName': staffName ?? ''}
           ];
 
-    await api.createInvoice({
-      if (posSelectedCustomer != null && !posSelectedCustomer!.id.startsWith('tmp_'))
-        'customerId': posSelectedCustomer!.id,
+    final invNum = invoiceNumber?.isNotEmpty == true
+        ? invoiceNumber!
+        : 'RVX-${salonSlug.isNotEmpty ? salonSlug.toUpperCase() : "POS"}-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch % 1000000}';
+
+    Map<String, dynamic>? res;
+    try {
+      res = await api.createInvoice({
+        'invoiceNumber': invNum,
+        if (salonUpiId.isNotEmpty) 'upiId': salonUpiId,
+        if (posSelectedCustomer != null && !posSelectedCustomer!.id.startsWith('tmp_'))
+          'customerId': posSelectedCustomer!.id,
+        'customerName': posSelectedCustomer?.name ?? 'Walk-in Guest',
+        'customerPhone': posSelectedCustomer?.phone ?? '',
+        if (posSelectedCustomer != null && posSelectedCustomer!.gender.isNotEmpty)
+          'gender': posSelectedCustomer!.gender,
+        if (posSelectedCustomer != null && posSelectedCustomer!.dateOfBirth.isNotEmpty)
+          'dob': posSelectedCustomer!.dateOfBirth,
+        if (staffName != null && staffName.isNotEmpty) 'staffName': staffName,
+        'items': itemsPayload,
+        'subtotal': posCart.isNotEmpty ? cartSubtotal : total,
+        'discountAmount': discountAmount,
+        'taxPercent': 0.0,
+        'paymentMethod': method,
+        'status': 'paid',
+      });
+    } catch (e) {
+      debugPrint("createInvoice remote sync notice: $e");
+    }
+
+    final invRecord = <String, dynamic>{
+      'invoiceNumber': invNum,
       'customerName': posSelectedCustomer?.name ?? 'Walk-in Guest',
       'customerPhone': posSelectedCustomer?.phone ?? '',
       'items': itemsPayload,
       'subtotal': posCart.isNotEmpty ? cartSubtotal : total,
       'discountAmount': discountAmount,
-      'taxPercent': posCart.isNotEmpty ? 18.0 : 0.0,
+      'taxAmount': 0.0,
+      'grandTotal': total,
       'paymentMethod': method,
       'status': 'paid',
-    });
+      'date': 'Today, ${DateFormat('hh:mm a').format(DateTime.now())}',
+      'paidAt': DateTime.now().toIso8601String(),
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+    if (res is Map<String, dynamic>) {
+      invRecord.addAll(res);
+    }
+    invoices.removeWhere((i) => i['invoiceNumber'] == invNum);
+    invoices.insert(0, invRecord);
 
     todayRevenue += total;
     todayClientsCount += 1;
+
+    // Reset customer selection & billing session cleanly
+    posSelectedCustomer = null;
+    discountAmount = 0.0;
+    if (activeBillingClient != null) {
+      final client = activeBillingClient!;
+      client.status = "Completed";
+      if (!client.id.startsWith('ins_')) {
+        updateAppointmentStatus(client.id, 'Completed').catchError((_) {});
+      }
+      final seatIdx = seats.indexWhere((s) => s.id == client.seatId);
+      if (seatIdx >= 0) {
+        seats[seatIdx].isInUse = false;
+        seats[seatIdx].currentClientId = null;
+        seats[seatIdx].currentClientName = null;
+      }
+      activeBillingClient = null;
+    }
+
     clearCart();
-    await syncWorkspace();
+    notifyListeners();
+
+    // Run workspace refresh in background non-blocking
+    syncWorkspace().catchError((e) {
+      debugPrint("Background sync notice: $e");
+    });
   }
 
   Future<void> addAppointment(Appointment appt) async {
@@ -965,6 +1280,9 @@ class RuvexiAppState extends ChangeNotifier {
         'name': customer.name,
         'phone': customer.phone,
         'email': customer.email,
+        'gender': customer.gender,
+        'birthday': customer.dateOfBirth,
+        'dob': customer.dateOfBirth,
         'formulaNotes': customer.formulaNotes ?? '',
         'vipTier': customer.membership,
       });
@@ -974,6 +1292,47 @@ class RuvexiAppState extends ChangeNotifier {
       customers.remove(customer);
       lastSyncError = e.toString();
       notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> importCustomers(
+    List<Map<String, dynamic>> customersList, {
+    String duplicateStrategy = 'merge',
+  }) async {
+    try {
+      final res = await api.importCustomers(customersList, duplicateStrategy: duplicateStrategy);
+      await syncWorkspace();
+      return res;
+    } catch (e) {
+      lastSyncError = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateCustomerFormula(String customerId, String formulaNotes) async {
+    final idx = customers.indexWhere((c) => c.id == customerId);
+    if (idx >= 0) {
+      final old = customers[idx];
+      customers[idx] = Customer(
+        id: old.id,
+        name: old.name,
+        phone: old.phone,
+        email: old.email,
+        tag: old.tag,
+        visitsCount: old.visitsCount,
+        totalSpent: old.totalSpent,
+        membership: old.membership,
+        formulaNotes: formulaNotes,
+        loyaltyPoints: old.loyaltyPoints,
+      );
+      notifyListeners();
+      try {
+        await api.updateCustomer(customerId, {'formulaNotes': formulaNotes});
+      } catch (e) {
+        lastSyncError = e.toString();
+        notifyListeners();
+      }
     }
   }
 
@@ -1091,7 +1450,24 @@ class RuvexiAppState extends ChangeNotifier {
     required String assignedStaff,
     required String seatId,
     String notes = "",
+    String gender = "Female",
+    String dateOfBirth = "",
   }) async {
+    if (customerName.isNotEmpty && customerName.toLowerCase() != "walk-in guest") {
+      final exists = customers.any((c) => (phone.isNotEmpty && c.phone == phone) || c.name.toLowerCase() == customerName.toLowerCase());
+      if (!exists) {
+        addCustomer(Customer(
+          id: "cst_${DateTime.now().millisecondsSinceEpoch}",
+          name: customerName,
+          phone: phone,
+          email: "${customerName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@example.com",
+          gender: gender,
+          dateOfBirth: dateOfBirth,
+          visitsCount: 1,
+          totalSpent: 0.0,
+        )).catchError((_) {});
+      }
+    }
     final tempId = "ins_${DateTime.now().millisecondsSinceEpoch}";
     final isWaiting = seatId == "Waiting";
     final now = TimeOfDayHelper.formatNow();
@@ -1206,26 +1582,13 @@ class RuvexiAppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> completeStaffCheckout({required String method, required double amount}) async {
-    await completePayment(method: method, amount: amount);
-
-    if (activeBillingClient != null) {
-      final client = activeBillingClient!;
-      client.status = "Completed";
-      if (!client.id.startsWith('ins_')) {
-        await updateAppointmentStatus(client.id, 'Completed');
-      }
-
-      final seatIdx = seats.indexWhere((s) => s.id == client.seatId);
-      if (seatIdx >= 0) {
-        seats[seatIdx].isInUse = false;
-        seats[seatIdx].currentClientId = null;
-        seats[seatIdx].currentClientName = null;
-      }
-      activeBillingClient = null;
-    }
-
-    notifyListeners();
+  Future<void> completeStaffCheckout({
+    required String method,
+    required double amount,
+    String? invoiceNumber,
+    String? staffName,
+  }) async {
+    await completePayment(method: method, amount: amount, invoiceNumber: invoiceNumber, staffName: staffName);
   }
 
   Future<void> logout() async {

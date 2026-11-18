@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
+import 'package:ruvexi_mobile/features/pos/screens/checkout_screen.dart';
 
 class AppointmentDetailsScreen extends StatefulWidget {
   final RuvexiAppState appState;
@@ -89,6 +90,63 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     });
     widget.appState.updateAppointmentStatus(_appt.id, "In Service");
     _showActionToast("Service started for ${_appt.customerName}!");
+  }
+
+  void _proceedToCheckout() {
+    // 1. Find or create matching Customer
+    Customer? existingCustomer;
+    for (final c in widget.appState.customers) {
+      if (c.phone == _appt.customerPhone || (c.name.isNotEmpty && c.name.toLowerCase() == _appt.customerName.toLowerCase())) {
+        existingCustomer = c;
+        break;
+      }
+    }
+    final customer = existingCustomer ?? Customer(
+      id: 'cst_${DateTime.now().millisecondsSinceEpoch}',
+      name: _appt.customerName,
+      phone: _appt.customerPhone,
+      email: '',
+      visitsCount: 1,
+      totalSpent: _appt.price,
+      tag: 'Appointment',
+    );
+    if (existingCustomer == null) {
+      widget.appState.addCustomer(customer);
+    }
+    widget.appState.posSelectedCustomer = customer;
+
+    // 2. Find or create matching ServiceItem
+    ServiceItem? matchedService;
+    for (final s in widget.appState.catalog) {
+      if (s.name.toLowerCase() == _appt.serviceName.toLowerCase()) {
+        matchedService = s;
+        break;
+      }
+    }
+    final service = matchedService ?? ServiceItem(
+      id: 'srv_appt_${DateTime.now().millisecondsSinceEpoch}',
+      name: _appt.serviceName,
+      price: _appt.price > 0 ? _appt.price : 300.0,
+      durationMinutes: _appt.durationMinutes > 0 ? _appt.durationMinutes : 45,
+      category: 'Haircut',
+    );
+
+    // 3. Populate POS Cart
+    widget.appState.posCart.clear();
+    widget.appState.posCart.add(CartItem(
+      service: service,
+      quantity: 1,
+    ));
+
+    // 4. Mark appointment as In Service
+    widget.appState.updateAppointmentStatus(_appt.id, "In Service");
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(appState: widget.appState),
+      ),
+    );
   }
 
   @override
@@ -347,41 +405,86 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
             const SizedBox(height: 40),
 
             // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _reschedule,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(color: Colors.white.withOpacity(0.2)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      backgroundColor: Colors.transparent,
-                    ),
-                    child: const Text(
-                      "Reschedule",
-                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
+            if (_appt.status == "Completed")
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _proceedToCheckout,
+                  icon: const Icon(Icons.receipt_long, color: Colors.black, size: 18),
+                  label: const Text(
+                    "Re-Open / Generate New Bill",
+                    style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: const Color(0xFF22C55E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _startService,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: const Color(0xFF22C55E),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      "Start Service",
-                      style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
+              )
+            else
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _proceedToCheckout,
+                      icon: const Icon(Icons.point_of_sale_rounded, color: Colors.black, size: 18),
+                      label: Text(
+                        _appt.price > 0
+                            ? "Proceed to Billing (₹${_appt.price.toStringAsFixed(0)})"
+                            : "Proceed to Billing & Checkout",
+                        style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: const Color(0xFF22C55E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _reschedule,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            backgroundColor: Colors.transparent,
+                          ),
+                          child: const Text(
+                            "Reschedule",
+                            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      if (_appt.status != "In Service") ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _startService,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(color: Color(0xFF22C55E), width: 1.2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              backgroundColor: const Color(0xFF101311),
+                            ),
+                            child: const Text(
+                              "Start Service",
+                              style: TextStyle(color: Color(0xFF22C55E), fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
           ],
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 import 'package:ruvexi_mobile/shared/widgets/customer_avatar.dart';
 import 'package:ruvexi_mobile/features/staff_portal/screens/check_in_customer_screen.dart';
+import 'package:ruvexi_mobile/features/pos/screens/pos_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
@@ -211,51 +212,82 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       bottomNavigationBar: Container(
         color: const Color(0xFF060706),
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: SizedBox(
-                height: 50,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.login_rounded, color: Color(0xFF22C55E), size: 18),
-                  label: const Text(
-                    "Check In",
-                    style: TextStyle(color: Color(0xFF22C55E), fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF22C55E), width: 1.2),
-                    backgroundColor: const Color(0xFF101311),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CheckInCustomerScreen(appState: widget.appState),
-                      ),
-                    );
-                  },
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.point_of_sale_rounded, color: Colors.black, size: 20),
+                label: const Text(
+                  "Start New Bill (POS)",
+                  style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
                 ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF22C55E),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () {
+                  widget.appState.posSelectedCustomer = _customer;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PosBillingScreen(appState: widget.appState),
+                    ),
+                  );
+                },
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 50,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.calendar_month_outlined, color: Colors.black, size: 18),
-                  label: const Text(
-                    "Schedule Visit",
-                    style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.login_rounded, color: Color(0xFF22C55E), size: 16),
+                      label: const Text(
+                        "Check In",
+                        style: TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF22C55E), width: 1.2),
+                        backgroundColor: const Color(0xFF101311),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CheckInCustomerScreen(appState: widget.appState),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF22C55E),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: _showScheduleFollowUpSheet,
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.calendar_month_outlined, color: Colors.white, size: 16),
+                      label: const Text(
+                        "Schedule Visit",
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        backgroundColor: const Color(0xFF101311),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _showScheduleFollowUpSheet,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -576,6 +608,79 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
+  void _editFormulaNotesDialog() {
+    final ctrl = TextEditingController(
+      text: _customer.formulaNotes ?? "Client prefers mild organic products. Avoid heavy chemical developers.",
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF101311),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Color(0xFF22C55E), width: 1),
+        ),
+        title: const Text("Hair / Skin Technical Formula", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Record color shade codes, bleach ratios, scalp sensitivities or styling notes for ${_customer.name}:",
+              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              maxLines: 4,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: "e.g. Loreal Majirel 6.1 (30ml) + 20 Vol (45ml). 35 mins processing. Sensitive scalp.",
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+                filled: true,
+                fillColor: const Color(0xFF141815),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF22C55E))),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
+            onPressed: () async {
+              final newNotes = ctrl.text.trim();
+              await widget.appState.updateCustomerFormula(_customer.id, newNotes);
+              setState(() {
+                _customer = Customer(
+                  id: _customer.id,
+                  name: _customer.name,
+                  phone: _customer.phone,
+                  email: _customer.email,
+                  tag: _customer.tag,
+                  visitsCount: _customer.visitsCount,
+                  totalSpent: _customer.totalSpent,
+                  membership: _customer.membership,
+                  formulaNotes: newNotes,
+                  loyaltyPoints: _customer.loyaltyPoints,
+                );
+              });
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx);
+              _showActionToast("Technical formula notes saved successfully");
+            },
+            child: const Text("Save Formula", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNotesTab() {
     return Container(
       width: double.infinity,
@@ -594,7 +699,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               const Text("Formulation & Preference Notes", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, color: Color(0xFF22C55E), size: 18),
-                onPressed: () => _showActionToast("Formula notes updated"),
+                onPressed: _editFormulaNotesDialog,
               ),
             ],
           ),

@@ -115,6 +115,13 @@ class RuvexiApiClient {
       final detail = decoded['detail'] ?? decoded['message'] ?? decoded['error'];
       if (detail is String && detail.trim().isNotEmpty) {
         msg = detail.trim();
+      } else if (detail is List && detail.isNotEmpty) {
+        final firstErr = detail.first;
+        if (firstErr is Map && firstErr['msg'] != null) {
+          msg = firstErr['msg'].toString();
+        } else {
+          msg = detail.toString();
+        }
       }
     }
     throw RuvexiApiException(msg, statusCode: res.statusCode);
@@ -287,6 +294,19 @@ class RuvexiApiClient {
     return Map<String, dynamic>.from(res as Map);
   }
 
+  Future<Map<String, dynamic>> updateCustomer(String customerId, Map<String, dynamic> data) async {
+    final res = await _request('PUT', '/customers/$customerId', body: data);
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<Map<String, dynamic>> importCustomers(List<Map<String, dynamic>> customers, {String duplicateStrategy = 'merge'}) async {
+    final res = await _request('POST', '/customers/import', body: {
+      'customers': customers,
+      'duplicateStrategy': duplicateStrategy,
+    });
+    return Map<String, dynamic>.from(res as Map);
+  }
+
   Future<Map<String, dynamic>> createStaff(Map<String, dynamic> data) async {
     final res = await _request('POST', '/staff', body: data);
     return Map<String, dynamic>.from(res as Map);
@@ -314,6 +334,28 @@ class RuvexiApiClient {
 
   Future<Map<String, dynamic>> createInvoice(Map<String, dynamic> data) async {
     final res = await _request('POST', '/invoices', body: data);
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  // ── Branches ─────────────────────────────────────────────────────────────
+  Future<List<dynamic>> fetchBranches() async {
+    final res = await _request('GET', '/branches');
+    if (res is List) return res;
+    return [];
+  }
+
+  Future<Map<String, dynamic>> createBranch(Map<String, dynamic> data) async {
+    final res = await _request('POST', '/branches', body: data);
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<Map<String, dynamic>> updateBranch(String branchId, Map<String, dynamic> data) async {
+    final res = await _request('PUT', '/branches/$branchId', body: data);
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<Map<String, dynamic>> deleteBranch(String branchId) async {
+    final res = await _request('DELETE', '/branches/$branchId');
     return Map<String, dynamic>.from(res as Map);
   }
 }

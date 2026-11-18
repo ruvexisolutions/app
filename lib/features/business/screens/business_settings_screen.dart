@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
+import 'package:ruvexi_mobile/features/business/screens/branches_management_screen.dart';
 import 'package:ruvexi_mobile/features/business/screens/subscription_screen.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
 
@@ -12,15 +13,22 @@ class BusinessSettingsScreen extends StatelessWidget {
   void _showEditProfileSheet(BuildContext context) {
     final nameCtrl = TextEditingController(text: appState.salonName);
     final locCtrl = TextEditingController(text: appState.salonLocation);
+    final phoneCtrl = TextEditingController(text: appState.salonPhone);
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF101311),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(22),
+        padding: EdgeInsets.only(
+          left: 22,
+          right: 22,
+          top: 22,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 22,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -42,7 +50,20 @@ class BusinessSettingsScreen extends StatelessWidget {
               controller: locCtrl,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: "Location",
+                labelText: "Location / City",
+                labelStyle: const TextStyle(color: Color(0xFF22C55E)),
+                filled: true,
+                fillColor: const Color(0xFF141815),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: "Salon Phone / Contact",
                 labelStyle: const TextStyle(color: Color(0xFF22C55E)),
                 filled: true,
                 fillColor: const Color(0xFF141815),
@@ -57,12 +78,13 @@ class BusinessSettingsScreen extends StatelessWidget {
                 onPressed: () async {
                   final newName = nameCtrl.text.trim();
                   final newLoc = locCtrl.text.trim();
+                  final newPhone = phoneCtrl.text.trim();
                   Navigator.pop(ctx);
                   try {
-                    await appState.updateSalonProfile(name: newName, location: newLoc);
+                    await appState.updateSalonProfile(name: newName, location: newLoc, phone: newPhone);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Business profile saved to Railway")),
+                      const SnackBar(content: Text("Business profile saved successfully")),
                     );
                   } catch (e) {
                     if (!context.mounted) return;
@@ -147,7 +169,7 @@ class BusinessSettingsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Direct UPI & GST Settings",
+              "Direct UPI Settings",
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -181,18 +203,6 @@ class BusinessSettingsScreen extends StatelessWidget {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               ),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: gstinCtrl,
-              style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-              decoration: InputDecoration(
-                labelText: "GSTIN Tax Number (Optional)",
-                labelStyle: const TextStyle(color: Color(0xFF22C55E)),
-                filled: true,
-                fillColor: const Color(0xFF141815),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-              ),
-            ),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -200,16 +210,13 @@ class BusinessSettingsScreen extends StatelessWidget {
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
                 onPressed: () async {
                   final newUpi = upiCtrl.text.trim();
-                  final newGstin = gstinCtrl.text.trim();
+                  final newPayee = payeeCtrl.text.trim();
                   Navigator.pop(ctx);
                   try {
-                    await appState.updateSalonPaymentSettings(upiId: newUpi);
-                    if (newGstin.isNotEmpty) {
-                      await appState.updateSalonProfile(gstin: newGstin);
-                    }
+                    await appState.updateSalonPaymentSettings(upiId: newUpi, payeeName: newPayee);
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Salon Direct UPI & Tax settings saved successfully")),
+                      const SnackBar(content: Text("Salon Direct UPI settings saved successfully")),
                     );
                   } catch (e) {
                     if (!context.mounted) return;
@@ -314,11 +321,15 @@ class BusinessSettingsScreen extends StatelessWidget {
               onTap: () => _showOperatingHoursSheet(context),
             ),
             _buildSettingTile(
-              icon: Icons.location_on_outlined,
-              title: "Branches / Outlets",
+              icon: Icons.store_mall_directory_outlined,
+              title: "Branches & Outlets",
+              trailingBadge: appState.branches.isNotEmpty
+                  ? "${appState.branches.length} ${appState.branches.length == 1 ? 'OUTLET' : 'OUTLETS'}"
+                  : "MANAGE",
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Active branch: Chikmagaluru Flagship")),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => BranchesManagementScreen(appState: appState)),
                 );
               },
             ),
@@ -335,7 +346,7 @@ class BusinessSettingsScreen extends StatelessWidget {
             ),
             _buildSettingTile(
               icon: Icons.receipt_long_outlined,
-              title: "Payments & Tax (GST)",
+              title: "Payments & Direct UPI",
               trailingBadge: appState.salonUpiId.isNotEmpty ? "DIRECT UPI" : "SETUP UPI",
               onTap: () => _showUpiSettingsSheet(context),
             ),

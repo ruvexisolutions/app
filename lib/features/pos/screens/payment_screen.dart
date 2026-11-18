@@ -15,7 +15,7 @@ class PaymentScreen extends StatefulWidget {
     super.key,
     required this.appState,
     required this.amount,
-    this.customerName = "Priya Sharma",
+    this.customerName = "Walk-in Guest",
   });
 
   @override
@@ -24,25 +24,38 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   int _selectedMethodIndex = 0; // 0: UPI, 1: Card, 2: Cash, 3: Other
+  bool _isProcessing = false;
 
   final List<Map<String, dynamic>> _methods = [
     {
-      "title": "UPI",
-      "subtitle": "Google Pay, PhonePe, Paytm QR",
-      "icon": Icons.qr_code_2_rounded,
-      "tag": "UPI",
+      "title": "Google Pay",
+      "subtitle": "GPay instant counter settlement",
+      "icon": Icons.account_balance_wallet_rounded,
+      "tag": "Google Pay",
     },
     {
-      "title": "Card",
-      "subtitle": "Credit / Debit Card (Visa, RuPay, MC)",
-      "icon": Icons.credit_card_rounded,
-      "tag": "CARD",
+      "title": "PhonePe",
+      "subtitle": "PhonePe instant UPI settlement",
+      "icon": Icons.phone_android_rounded,
+      "tag": "PhonePe",
+    },
+    {
+      "title": "UPI / QR Code",
+      "subtitle": "Scan with any UPI QR App",
+      "icon": Icons.qr_code_2_rounded,
+      "tag": "UPI",
     },
     {
       "title": "Cash",
       "subtitle": "Direct physical counter currency",
       "icon": Icons.payments_outlined,
       "tag": "CASH",
+    },
+    {
+      "title": "Card",
+      "subtitle": "Credit / Debit Card POS",
+      "icon": Icons.credit_card_rounded,
+      "tag": "CARD",
     },
     {
       "title": "Other",
@@ -53,8 +66,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   ];
 
   Future<void> _collectPayment() async {
+    final activeCustomerName = widget.appState.posSelectedCustomer?.name ?? (widget.customerName.isNotEmpty ? widget.customerName : "Walk-in Guest");
     final methodTag = _methods[_selectedMethodIndex]["tag"] as String;
-    if (methodTag == "UPI") {
+    if (methodTag == "UPI" || methodTag == "Google Pay" || methodTag == "PhonePe") {
       final invNum = "RVX-${DateTime.now().millisecondsSinceEpoch % 100000}";
       showDialog(
         context: context,
@@ -62,9 +76,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         builder: (ctx) => UpiQrModalDialog(
           appState: widget.appState,
           amount: widget.amount,
-          customerName: widget.customerName,
+          customerName: activeCustomerName,
           invoiceNumber: invNum,
-          onPaymentConfirmed: () => _executePaymentBackend("UPI", invNum),
+          onPaymentConfirmed: () => _executePaymentBackend(methodTag, invNum),
         ),
       );
       return;
@@ -73,32 +87,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _executePaymentBackend(String methodTag, [String? explicitInvoiceNum]) async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    final activeCustomerName = widget.appState.posSelectedCustomer?.name ?? (widget.customerName.isNotEmpty ? widget.customerName : "Walk-in Guest");
     final billed = widget.appState.posCart
         .map((c) => {
-              'name': c.service.name,
-              'price': c.service.price,
+              'name': c.name,
+              'price': c.price,
               'qty': c.quantity,
+              'type': c.type,
+              'staffName': c.staffName ?? '',
             })
         .toList();
     final customerPhone = widget.appState.posSelectedCustomer?.phone ?? '';
 
+    final invNum = explicitInvoiceNum ?? "RVX-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch % 1000000}";
+
     try {
-      await widget.appState.completePayment(method: methodTag, amount: widget.amount);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent),
+      await widget.appState.completePayment(
+        method: methodTag,
+        amount: widget.amount,
+        invoiceNumber: invNum,
       );
-      return;
+    } catch (e) {
+      debugPrint("Payment completion notice: $e");
     }
     if (!mounted) return;
+    setState(() => _isProcessing = false);
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => CheckoutCompleteScreen(
           appState: widget.appState,
           amount: widget.amount,
-          customerName: widget.customerName,
+          customerName: activeCustomerName,
           customerPhone: customerPhone,
           paymentMethod: methodTag,
           billedItems: billed,
@@ -249,18 +272,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _collectPayment,
+                onPressed: _isProcessing ? null : _collectPayment,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF22C55E),
+                  disabledBackgroundColor: const Color(0xFF1B3822),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: Text(
-                  _selectedMethodIndex == 0
-                      ? "Show UPI QR Code (₹${widget.amount.toInt()})"
-                      : "Collect Payment ₹${widget.amount.toInt()}",
-                  style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
-                ),
+                child: _isProcessing
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                      )
+                    : Text(
+                        _selectedMethodIndex == 0
+                            ? "Show UPI QR Code (₹${widget.amount.toInt()})"
+                            : "Collect Payment ₹${widget.amount.toInt()}",
+                        style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ],

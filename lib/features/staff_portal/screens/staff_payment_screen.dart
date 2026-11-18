@@ -10,6 +10,7 @@ class StaffPaymentScreen extends StatefulWidget {
   final double totalAmount;
   final String customerName;
   final String customerPhone;
+  final String staffName;
   final List<Map<String, dynamic>> billedItems;
 
   const StaffPaymentScreen({
@@ -18,6 +19,7 @@ class StaffPaymentScreen extends StatefulWidget {
     required this.totalAmount,
     required this.customerName,
     this.customerPhone = "",
+    this.staffName = "Manoj K",
     this.billedItems = const [],
   });
 
@@ -27,29 +29,42 @@ class StaffPaymentScreen extends StatefulWidget {
 
 class _StaffPaymentScreenState extends State<StaffPaymentScreen> {
   int _selectedMethod = 0; // 0: UPI, 1: Card, 2: Cash, 3: Split Payment
+  bool _isProcessing = false;
 
   final List<Map<String, dynamic>> _methods = [
     {
-      "title": "UPI",
-      "subtitle": "",
+      "title": "Google Pay",
+      "subtitle": "GPay instant settlement",
+      "icon": Icons.account_balance_wallet_rounded,
+      "tag": "Google Pay",
+    },
+    {
+      "title": "PhonePe",
+      "subtitle": "PhonePe instant UPI payment",
+      "icon": Icons.phone_android_rounded,
+      "tag": "PhonePe",
+    },
+    {
+      "title": "UPI / QR Code",
+      "subtitle": "Scan with any UPI app",
       "icon": Icons.qr_code_2_rounded,
       "tag": "UPI",
     },
     {
-      "title": "Card",
-      "subtitle": "Credit / Debit Card",
-      "icon": Icons.credit_card_rounded,
-      "tag": "Card",
-    },
-    {
       "title": "Cash",
-      "subtitle": "",
+      "subtitle": "Direct physical counter cash",
       "icon": Icons.payments_outlined,
       "tag": "Cash",
     },
     {
+      "title": "Card",
+      "subtitle": "Credit / Debit POS machine",
+      "icon": Icons.credit_card_rounded,
+      "tag": "Card",
+    },
+    {
       "title": "Split Payment",
-      "subtitle": "",
+      "subtitle": "Split Cash & UPI",
       "icon": Icons.call_split_rounded,
       "tag": "Split Payment",
     },
@@ -57,8 +72,8 @@ class _StaffPaymentScreenState extends State<StaffPaymentScreen> {
 
   Future<void> _completePayment() async {
     final tag = _methods[_selectedMethod]["tag"] as String;
-    if (tag == "UPI") {
-      final invNum = "RVX-${DateTime.now().millisecondsSinceEpoch % 100000}";
+    if (tag == "UPI" || tag == "Google Pay" || tag == "PhonePe") {
+      final invNum = "RVX-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch % 1000000}";
       showDialog(
         context: context,
         barrierDismissible: true,
@@ -67,7 +82,7 @@ class _StaffPaymentScreenState extends State<StaffPaymentScreen> {
           amount: widget.totalAmount,
           customerName: widget.customerName,
           invoiceNumber: invNum,
-          onPaymentConfirmed: () => _executeStaffCheckoutBackend("UPI"),
+          onPaymentConfirmed: () => _executeStaffCheckoutBackend(tag, invNum),
         ),
       );
       return;
@@ -75,17 +90,23 @@ class _StaffPaymentScreenState extends State<StaffPaymentScreen> {
     await _executeStaffCheckoutBackend(tag);
   }
 
-  Future<void> _executeStaffCheckoutBackend(String tag) async {
+  Future<void> _executeStaffCheckoutBackend(String tag, [String? explicitInvoiceNum]) async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    final invNum = explicitInvoiceNum ?? "RVX-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch % 1000000}";
     try {
-      await widget.appState.completeStaffCheckout(method: tag, amount: widget.totalAmount);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.redAccent),
+      await widget.appState.completeStaffCheckout(
+        method: tag,
+        amount: widget.totalAmount,
+        invoiceNumber: invNum,
+        staffName: widget.staffName,
       );
-      return;
+    } catch (e) {
+      debugPrint("Staff payment notice: $e");
     }
     if (!mounted) return;
+    setState(() => _isProcessing = false);
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
@@ -275,25 +296,32 @@ class _StaffPaymentScreenState extends State<StaffPaymentScreen> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: _completePayment,
+                        onPressed: _isProcessing ? null : _completePayment,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF22C55E),
+                          disabledBackgroundColor: const Color(0xFF1B3822),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           elevation: 0,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _selectedMethod == 0
-                                  ? "Show UPI QR Code (₹${widget.totalAmount.toStringAsFixed(0)})"
-                                  : "Complete Payment",
-                              style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(_selectedMethod == 0 ? Icons.qr_code_rounded : Icons.check_rounded, color: Colors.black, size: 18),
-                          ],
-                        ),
+                        child: _isProcessing
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    _selectedMethod == 0
+                                        ? "Show UPI QR Code (₹${widget.totalAmount.toStringAsFixed(0)})"
+                                        : "Complete Payment",
+                                    style: const TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(_selectedMethod == 0 ? Icons.qr_code_rounded : Icons.check_rounded, color: Colors.black, size: 18),
+                                ],
+                              ),
                       ),
                     ),
                     const SizedBox(height: 30),

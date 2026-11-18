@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 
-class UpiQrModalDialog extends StatelessWidget {
+class UpiQrModalDialog extends StatefulWidget {
   final RuvexiAppState appState;
   final double amount;
   final String customerName;
@@ -18,16 +18,23 @@ class UpiQrModalDialog extends StatelessWidget {
     required this.onPaymentConfirmed,
   });
 
+  @override
+  State<UpiQrModalDialog> createState() => _UpiQrModalDialogState();
+}
+
+class _UpiQrModalDialogState extends State<UpiQrModalDialog> {
+  bool _isConfirming = false;
+
   String get _upiId {
-    if (appState.salonUpiId.isNotEmpty) return appState.salonUpiId;
-    return "ruvexi.${appState.salonName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@upi";
+    if (widget.appState.salonUpiId.isNotEmpty) return widget.appState.salonUpiId;
+    return "ruvexi.${widget.appState.salonName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@upi";
   }
 
   String get _upiIntentUri {
     final cleanUpi = _upiId;
-    final cleanName = Uri.encodeComponent(appState.salonName);
-    final amt = amount.toStringAsFixed(2);
-    final note = Uri.encodeComponent("Invoice $invoiceNumber");
+    final cleanName = Uri.encodeComponent(widget.appState.salonName);
+    final amt = widget.amount.toStringAsFixed(2);
+    final note = Uri.encodeComponent("Invoice ${widget.invoiceNumber}");
     return "upi://pay?pa=$cleanUpi&pn=$cleanName&am=$amt&cu=INR&tn=$note";
   }
 
@@ -87,7 +94,7 @@ class UpiQrModalDialog extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          appState.salonName.toUpperCase(),
+                          widget.appState.salonName.toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -156,7 +163,7 @@ class UpiQrModalDialog extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          "₹${amount.toStringAsFixed(0)}",
+                          "₹${widget.amount.toStringAsFixed(0)}",
                           style: const TextStyle(
                             color: Color(0xFF22C55E),
                             fontSize: 32,
@@ -166,7 +173,7 @@ class UpiQrModalDialog extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          "Client: $customerName • $invoiceNumber",
+                          "Client: ${widget.customerName} • ${widget.invoiceNumber}",
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.65),
                             fontSize: 11,
@@ -321,19 +328,28 @@ class UpiQrModalDialog extends StatelessWidget {
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      icon: const Icon(Icons.check_circle_rounded, size: 20, color: Colors.black),
-                      label: const Text(
-                        "Confirm Payment Received",
-                        style: TextStyle(
+                      icon: _isConfirming
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            )
+                          : const Icon(Icons.check_circle_rounded, size: 20, color: Colors.black),
+                      label: Text(
+                        _isConfirming ? "Processing..." : "Confirm Payment Received",
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.3,
                         ),
                       ),
-                      onPressed: () {
-                        Navigator.pop(context); // close QR dialog
-                        onPaymentConfirmed();
-                      },
+                      onPressed: _isConfirming
+                          ? null
+                          : () {
+                              setState(() => _isConfirming = true);
+                              Navigator.pop(context); // close QR dialog
+                              widget.onPaymentConfirmed();
+                            },
                     ),
                   ),
                 ],

@@ -155,7 +155,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   itemCount: widget.appState.staff.length,
                   itemBuilder: (context, index) {
                     final member = widget.appState.staff[index];
-                    return _buildStaffTile(member);
+                    return _selectedTab == 0 ? _buildStaffTile(member) : _buildAttendanceTile(member);
                   },
                 ),
               ),
@@ -208,6 +208,111 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAttendanceTile(StaffMember member) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101311),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: member.isClockedIn ? const Color(0xFF22C55E).withOpacity(0.3) : Colors.white.withOpacity(0.08),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: member.isClockedIn ? const Color(0xFF1B241E) : const Color(0xFF222222),
+                    child: Text(
+                      member.name.substring(0, 1),
+                      style: TextStyle(
+                        color: member.isClockedIn ? const Color(0xFF22C55E) : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        member.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        member.role,
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: member.isClockedIn ? Colors.redAccent.withOpacity(0.18) : const Color(0xFF22C55E),
+                  foregroundColor: member.isClockedIn ? Colors.redAccent : Colors.black,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => widget.appState.toggleStaffClockIn(member.id),
+                child: Text(
+                  member.isClockedIn ? "Clock Out" : "Clock In",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141815),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Check-In Time", style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10.5)),
+                    const SizedBox(height: 2),
+                    Text(member.checkInTime, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Services Today", style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10.5)),
+                    const SizedBox(height: 2),
+                    Text("${member.servicesCount}", style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Sales Revenue", style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10.5)),
+                    const SizedBox(height: 2),
+                    Text("₹${member.serviceRevenue.toInt()}", style: const TextStyle(color: Color(0xFF22C55E), fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

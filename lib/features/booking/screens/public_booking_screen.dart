@@ -38,7 +38,7 @@ class _PublicBookingScreenState extends State<PublicBookingScreen> {
 
   void _confirmBooking() {
     if (selectedService == null) return;
-    widget.appState.appointments.add(
+    widget.appState.addAppointment(
       Appointment(
         id: "a_${DateTime.now().millisecondsSinceEpoch}",
         customerName: "Guest Client (Self Booked)",
@@ -49,7 +49,6 @@ class _PublicBookingScreenState extends State<PublicBookingScreen> {
         status: "Confirmed",
       ),
     );
-    widget.appState.notifyListeners();
 
     showDialog(
       context: context,

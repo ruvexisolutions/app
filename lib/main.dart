@@ -49,6 +49,47 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int _currentNavIndex = 0;
+  late final List<Widget> _staffScreens;
+  late final List<Widget> _ownerScreens;
+
+  @override
+  void initState() {
+    super.initState();
+    _staffScreens = [
+      StaffHomeScreen(
+        appState: widget.appState,
+        onNavigateToTab: (idx) {
+          setState(() => _currentNavIndex = idx.clamp(0, 3));
+        },
+      ),
+      StaffCustomersScreen(
+        appState: widget.appState,
+        showBackButton: false,
+      ),
+      StaffBillingScreen(
+        appState: widget.appState,
+        showBackButton: false,
+      ),
+      StaffMoreScreen(
+        appState: widget.appState,
+      ),
+    ];
+
+    _ownerScreens = [
+      OverviewDashboardScreen(
+        appState: widget.appState,
+        onNavigateToTab: (index) {
+          setState(() {
+            _currentNavIndex = (index <= 4) ? index : 4;
+          });
+        },
+      ),
+      AppointmentsCalendarScreen(appState: widget.appState),
+      PosBillingScreen(appState: widget.appState),
+      CustomersCrmScreen(appState: widget.appState),
+      MoreScreen(appState: widget.appState),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,31 +100,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
         if (isStaff) {
           final staffIndex = _currentNavIndex > 3 ? 0 : _currentNavIndex;
-          final staffScreens = [
-            StaffHomeScreen(
-              appState: widget.appState,
-              onNavigateToTab: (idx) {
-                setState(() => _currentNavIndex = idx.clamp(0, 3));
-              },
-            ),
-            StaffCustomersScreen(
-              appState: widget.appState,
-              showBackButton: false,
-            ),
-            StaffBillingScreen(
-              appState: widget.appState,
-              showBackButton: false,
-            ),
-            StaffMoreScreen(
-              appState: widget.appState,
-            ),
-          ];
-
           return Scaffold(
             backgroundColor: const Color(0xFF060706),
             body: IndexedStack(
               index: staffIndex,
-              children: staffScreens,
+              children: _staffScreens,
             ),
             bottomNavigationBar: _buildStaffBottomBar(staffIndex),
           );
@@ -91,26 +112,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
         // Owner Role Shell (5 tabs)
         final ownerIndex = _currentNavIndex > 4 ? 0 : _currentNavIndex;
-        final ownerScreens = [
-          OverviewDashboardScreen(
-            appState: widget.appState,
-            onNavigateToTab: (index) {
-              setState(() {
-                _currentNavIndex = (index <= 4) ? index : 4;
-              });
-            },
-          ),
-          AppointmentsCalendarScreen(appState: widget.appState),
-          PosBillingScreen(appState: widget.appState),
-          CustomersCrmScreen(appState: widget.appState),
-          MoreScreen(appState: widget.appState),
-        ];
-
         return Scaffold(
           backgroundColor: const Color(0xFF060706),
           body: IndexedStack(
             index: ownerIndex,
-            children: ownerScreens,
+            children: _ownerScreens,
           ),
           bottomNavigationBar: _buildOwnerBottomBar(ownerIndex),
         );
@@ -143,9 +149,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
           _buildNavItem(
             index: 1,
             selectedIndex: selectedIndex,
-            iconOutline: Icons.people_outline_rounded,
-            iconFilled: Icons.people_rounded,
-            label: "Customers",
+            iconOutline: Icons.receipt_long_outlined,
+            iconFilled: Icons.receipt_long_rounded,
+            label: "Register",
           ),
           _buildNavItem(
             index: 2,

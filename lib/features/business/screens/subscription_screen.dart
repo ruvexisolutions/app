@@ -231,7 +231,7 @@ class SubscriptionScreen extends StatelessWidget {
               _buildFeatureCheck("Inventory & Low Stock Push Alerts"),
               _buildFeatureCheck("Full Financial Analytics & Profit Ledger"),
               _buildFeatureCheck("Meta WhatsApp Cloud Integration"),
-              _buildFeatureCheck("GST 18% Compliant Automatic Invoicing"),
+              _buildFeatureCheck("Instant Digital WhatsApp Receipts"),
               const SizedBox(height: 30),
             ],
           ),
