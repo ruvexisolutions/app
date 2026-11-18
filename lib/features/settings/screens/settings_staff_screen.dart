@@ -37,7 +37,10 @@ class SettingsStaffScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.location_on, size: 14, color: RuvexiTheme.primaryAccent),
                         const SizedBox(width: 4),
-                        const Text("Indiranagar 100ft Rd, Bengaluru", style: TextStyle(color: RuvexiTheme.textSecondary, fontSize: 12)),
+                        Text(
+                          appState.salonLocation.isNotEmpty ? appState.salonLocation : "Location not set",
+                          style: const TextStyle(color: RuvexiTheme.textSecondary, fontSize: 12),
+                        ),
                       ],
                     ),
                   ],
@@ -46,9 +49,25 @@ class SettingsStaffScreen extends StatelessWidget {
               const SizedBox(height: 20),
               const Text("Team Stylists & Commissions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
               const SizedBox(height: 10),
-              _buildStaffTile("Priya Varma", "Senior Colorist", "15% Commission", "₹18,400 sales today"),
-              _buildStaffTile("Vikram Sethi", "Master Barber", "12% Commission", "₹14,200 sales today"),
-              _buildStaffTile("Sunita Mohan", "Lead Aesthetician", "10% Commission", "₹8,600 sales today"),
+              if (appState.staff.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: RuvexiTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: RuvexiTheme.border),
+                  ),
+                  child: const Center(
+                    child: Text("No team members added yet", style: TextStyle(color: RuvexiTheme.textMuted, fontSize: 13)),
+                  ),
+                )
+              else
+                ...appState.staff.map((s) => _buildStaffTile(
+                      s.name,
+                      s.role,
+                      "${(s.commissionRate * 100).toStringAsFixed(0)}% Commission",
+                      s.isClockedIn ? "Clocked In" : "Offline",
+                    )),
               const SizedBox(height: 20),
               const Text("Salon Integrations", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
               const SizedBox(height: 10),

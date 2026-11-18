@@ -110,7 +110,7 @@ class _CustomerPickerSheetState extends State<CustomerPickerSheet> {
                   decoration: InputDecoration(
                     labelText: "Customer Full Name",
                     labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
-                    hintText: "e.g. Ananya Rao",
+                    hintText: "e.g. Full Name",
                     hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 13),
                     filled: true,
                     fillColor: const Color(0xFF101311),

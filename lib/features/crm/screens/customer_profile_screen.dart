@@ -53,7 +53,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     String selectedService = serviceNames.first;
 
     final staffList = widget.appState.staff;
-    final staffNames = staffList.isNotEmpty ? staffList.map((s) => s.name).toList() : ["Manoj K", "Pooja M"];
+    final staffNames = staffList.isNotEmpty ? staffList.map((s) => s.name).toList() : ["Front Desk"];
     String selectedStaff = staffNames.first;
 
     showModalBottomSheet(
@@ -546,12 +546,29 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   }
 
   Widget _buildVisitsTab() {
+    final customerAppointments = widget.appState.appointments
+        .where((a) =>
+            a.customerName.toLowerCase() == _customer.name.toLowerCase() ||
+            (a.customerPhone.isNotEmpty && a.customerPhone == _customer.phone))
+        .toList();
+
+    if (customerAppointments.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 30),
+        alignment: Alignment.center,
+        child: Text(
+          "No previous visits recorded for this client yet",
+          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+        ),
+      );
+    }
+
     return Column(
-      children: [
-        _buildVisitTile("Tue 09 Nov 2026", "Hair Cut + Hair Spa", "Manoj K", "₹1,399"),
-        _buildVisitTile("14 Oct 2026", "Precision Hair Cut & Styling", "Manoj K", "₹399"),
-        _buildVisitTile("28 Sep 2026", "Hair Color & Gloss Treatment", "Pooja M", "₹2,499"),
-      ],
+      children: customerAppointments.map((apt) {
+        final dateStr = DateFormat("dd MMM yyyy").format(apt.time);
+        final amt = "₹${apt.price.toStringAsFixed(0)}";
+        return _buildVisitTile(dateStr, apt.serviceName, apt.staffName, amt);
+      }).toList(),
     );
   }
 

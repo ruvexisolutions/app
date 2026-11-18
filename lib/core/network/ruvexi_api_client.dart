@@ -358,6 +358,21 @@ class RuvexiApiClient {
     final res = await _request('DELETE', '/branches/$branchId');
     return Map<String, dynamic>.from(res as Map);
   }
+
+  // ── Invitations ──────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> createReceptionistInvitation({
+    required String email,
+    String? branchId,
+  }) async {
+    final payload = <String, dynamic>{
+      'email': email.trim().toLowerCase(),
+    };
+    if (branchId != null && branchId.trim().isNotEmpty) {
+      payload['branchId'] = branchId.trim();
+    }
+    final res = await _request('POST', '/invitations', body: payload);
+    return Map<String, dynamic>.from(res as Map);
+  }
 }
 
 typedef VoidCallbackLike = void Function();

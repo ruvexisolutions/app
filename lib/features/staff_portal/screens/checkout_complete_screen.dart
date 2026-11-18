@@ -73,11 +73,11 @@ class CheckoutCompleteScreen extends StatelessWidget {
     int selectedWeeks = 3;
     final staffNames = appState.staff.isNotEmpty
         ? appState.staff.map((s) => s.name).toList()
-        : ["Manoj K", "Pooja M", "Kiran S"];
+        : ["Front Desk"];
     String selectedStaff = staffNames.first;
     String selectedService = billedItems.isNotEmpty
-        ? (billedItems.first['name']?.toString() ?? 'Hair Cut & Styling')
-        : (appState.catalog.isNotEmpty ? appState.catalog.first.name : 'Hair Cut & Styling');
+        ? (billedItems.first['name']?.toString() ?? 'Salon Service')
+        : (appState.catalog.isNotEmpty ? appState.catalog.first.name : 'Salon Service');
 
     showModalBottomSheet(
       context: context,

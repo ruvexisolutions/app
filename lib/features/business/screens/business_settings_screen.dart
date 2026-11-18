@@ -3,6 +3,7 @@ import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 import 'package:ruvexi_mobile/features/business/screens/branches_management_screen.dart';
 import 'package:ruvexi_mobile/features/business/screens/subscription_screen.dart';
+import 'package:ruvexi_mobile/features/staff/widgets/invite_receptionist_sheet.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
 
 class BusinessSettingsScreen extends StatelessWidget {
@@ -332,6 +333,12 @@ class BusinessSettingsScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => BranchesManagementScreen(appState: appState)),
                 );
               },
+            ),
+            _buildSettingTile(
+              icon: Icons.person_add_alt_1_outlined,
+              title: "Invite Receptionist",
+              trailingBadge: "FRONT DESK",
+              onTap: () => showInviteReceptionistSheet(context, appState),
             ),
             _buildSettingTile(
               icon: Icons.workspace_premium_outlined,

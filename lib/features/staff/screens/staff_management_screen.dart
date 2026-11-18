@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 import 'package:ruvexi_mobile/features/staff/screens/staff_profile_screen.dart';
+import 'package:ruvexi_mobile/features/staff/widgets/invite_receptionist_sheet.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
 
 class StaffManagementScreen extends StatefulWidget {
@@ -119,6 +120,11 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_add_alt_1_outlined, color: Color(0xFFFACC15), size: 20),
+            tooltip: "Invite Receptionist",
+            onPressed: () => showInviteReceptionistSheet(context, widget.appState),
+          ),
+          IconButton(
             icon: const Icon(Icons.sync_rounded, color: Color(0xFF22C55E), size: 20),
             tooltip: "Sync Staff",
             onPressed: () => widget.appState.syncWorkspace(),
@@ -165,23 +171,47 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       ),
       bottomSheet: Container(
         color: const Color(0xFF060706),
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-        child: SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: _showAddStaffDialog,
-            icon: const Icon(Icons.add, color: Colors.black, size: 20),
-            label: const Text(
-              "Add Staff",
-              style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 50,
+                child: OutlinedButton.icon(
+                  onPressed: () => showInviteReceptionistSheet(context, widget.appState),
+                  icon: const Icon(Icons.person_add_alt_1_outlined, color: Color(0xFFFACC15), size: 18),
+                  label: const Text(
+                    "Invite Front Desk",
+                    style: TextStyle(color: Color(0xFFFACC15), fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: const Color(0xFFFACC15).withOpacity(0.4)),
+                    backgroundColor: const Color(0xFFFACC15).withOpacity(0.08),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF22C55E),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              elevation: 0,
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: _showAddStaffDialog,
+                  icon: const Icon(Icons.add, color: Colors.black, size: 20),
+                  label: const Text(
+                    "Add Staff",
+                    style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

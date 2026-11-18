@@ -15,10 +15,7 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   // Local checkout items if cart was empty or customized
-  List<Map<String, dynamic>> _items = [
-    {"name": "Hair Cut", "price": 399.0, "qty": 1},
-    {"name": "Hair Spa", "price": 1199.0, "qty": 1},
-  ];
+  List<Map<String, dynamic>> _items = [];
 
   double _customDiscountAmount = 0.0;
   double _selectedDiscountPercent = 0.0;
@@ -33,6 +30,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         "price": c.service.price,
         "qty": c.quantity,
       }).toList();
+    } else {
+      _items = [];
     }
     if (widget.appState.discountAmount > 0) {
       _customDiscountAmount = widget.appState.discountAmount;

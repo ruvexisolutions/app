@@ -91,20 +91,37 @@ class StaffMoreScreen extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Salon Floor Alerts", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 14),
-            _buildAlertItem("Priya Sharma checked into Seat S-1", "28 mins ago"),
-            _buildAlertItem("2 clients currently in Waiting queue", "Active"),
-            _buildAlertItem("Seats S-5 and S-6 are ready for walk-ins", "Available"),
-          ],
-        ),
-      ),
+      builder: (ctx) {
+        final inSalon = widget.appState.inSalonClients.where((c) => c.status == "In Salon").toList();
+        final waiting = widget.appState.inSalonClients.where((c) => c.status == "Waiting").toList();
+        final availableSeats = widget.appState.seats.where((s) => !s.isInUse).toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Salon Floor Alerts", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              if (inSalon.isEmpty && waiting.isEmpty && availableSeats.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  alignment: Alignment.center,
+                  child: Text("No active floor alerts at this time", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
+                )
+              else ...[
+                if (inSalon.isNotEmpty)
+                  _buildAlertItem("${inSalon.first.customerName} checked into ${inSalon.first.seatId}", "${inSalon.first.elapsedMinutes} mins ago"),
+                if (waiting.isNotEmpty)
+                  _buildAlertItem("${waiting.length} client${waiting.length == 1 ? '' : 's'} currently in Waiting queue", "Waiting"),
+                if (availableSeats.isNotEmpty)
+                  _buildAlertItem("${availableSeats.length} chair${availableSeats.length == 1 ? '' : 's'} ready for walk-ins", "Available"),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 

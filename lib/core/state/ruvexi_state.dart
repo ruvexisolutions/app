@@ -3,7 +3,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import '../network/api_config.dart';
 import '../network/ruvexi_api_client.dart';
-import 'olg_default_catalog.dart';
 
 class ServiceItem {
   final String id;
@@ -552,7 +551,6 @@ class RuvexiAppState extends ChangeNotifier {
   double discountAmount = 0.0;
 
   RuvexiAppState() {
-    catalog.addAll(defaultOlgCatalog);
     api.onUnauthorized = () {
       _clearWorkspaceData();
       isAuthenticated = false;
@@ -603,7 +601,6 @@ class RuvexiAppState extends ChangeNotifier {
     posSelectedCustomer = null;
     activeBillingClient = null;
     catalog.clear();
-    catalog.addAll(defaultOlgCatalog);
     customers.clear();
     staff.clear();
     inventory.clear();
@@ -778,21 +775,9 @@ class RuvexiAppState extends ChangeNotifier {
       final rawServices = (data['services'] as List?) ?? [];
       final parsedServices = rawServices.whereType<Map>().map((m) => ServiceItem.fromJson(Map<String, dynamic>.from(m))).toList();
 
-      final mergedCatalog = <String, ServiceItem>{};
-      // 1. Preload full 125-item OLG Professional Unisex Salon & HairFixing catalog
-      for (final s in defaultOlgCatalog) {
-        mergedCatalog[s.name.toLowerCase().trim()] = s;
-      }
-      // 2. Layer custom salon services / pricing saved on backend
-      for (final s in parsedServices) {
-        if (s.name.trim().isNotEmpty) {
-          mergedCatalog[s.name.toLowerCase().trim()] = s;
-        }
-      }
-
       catalog
         ..clear()
-        ..addAll(mergedCatalog.values);
+        ..addAll(parsedServices);
 
       final rawCustomers = (data['customers'] as List?) ?? [];
       customers
@@ -1022,6 +1007,16 @@ class RuvexiAppState extends ChangeNotifier {
   void setActiveBranch(SalonBranch branch) {
     activeBranch = branch;
     notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> inviteReceptionist({
+    required String email,
+    String? branchId,
+  }) async {
+    return await api.createReceptionistInvitation(
+      email: email,
+      branchId: branchId,
+    );
   }
 
   int get inSalonActiveCount => inSalonClients.where((c) => c.status == "In Salon").length;

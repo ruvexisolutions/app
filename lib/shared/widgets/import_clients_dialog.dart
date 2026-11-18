@@ -66,20 +66,6 @@ void showImportClientsModal(BuildContext context, RuvexiAppState appState) {
                 ),
                 const SizedBox(height: 14),
 
-                // Quick sample button
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                    icon: const Icon(Icons.playlist_add_rounded, size: 16, color: Color(0xFF22C55E)),
-                    label: const Text("Paste Sample List", style: TextStyle(color: Color(0xFF22C55E), fontSize: 12)),
-                    onPressed: () {
-                      textCtrl.text = "Priya Sharma, 9886012345\nRahul Verma, 9845098765\nAnanya Hegde, 9900112233";
-                      updateCount();
-                    },
-                  ),
-                ),
-
                 // Multi-line Text Area
                 TextField(
                   controller: textCtrl,
@@ -87,7 +73,7 @@ void showImportClientsModal(BuildContext context, RuvexiAppState appState) {
                   style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
                   onChanged: (_) => updateCount(),
                   decoration: InputDecoration(
-                    hintText: "Priya Sharma, 9886012345\nRahul Verma, 9845098765\nAnita Rao, 9740011223",
+                    hintText: "Full Name, Phone Number\nClient Two, 98XXXXXXXX",
                     hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 12),
                     filled: true,
                     fillColor: const Color(0xFF141815),
