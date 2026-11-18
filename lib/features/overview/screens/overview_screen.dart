@@ -4,6 +4,8 @@ import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 import 'package:ruvexi_mobile/shared/widgets/ruvexi_logo.dart';
 import 'package:ruvexi_mobile/features/appointments/screens/new_appointment_screen.dart';
 import 'package:ruvexi_mobile/features/appointments/screens/appointment_details_screen.dart';
+import 'package:ruvexi_mobile/features/business/screens/branches_management_screen.dart';
+import 'package:ruvexi_mobile/shared/widgets/branch_switcher_sheet.dart';
 import 'package:ruvexi_mobile/features/services/screens/services_screen.dart';
 import 'package:ruvexi_mobile/features/inventory/screens/inventory_screen.dart';
 import 'package:ruvexi_mobile/features/reports/screens/reports_analytics_screen.dart';
@@ -45,42 +47,47 @@ class OverviewDashboardScreen extends StatelessWidget {
           ),
 
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Top Header Bar: Brand Logo + Salon Dropdown + Notifications
-                  _buildTopHeader(context),
+            child: ListenableBuilder(
+              listenable: appState,
+              builder: (context, _) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Top Header Bar: Brand Logo + Salon/Branch Dropdown + Notifications
+                      _buildTopHeader(context),
 
-                  const SizedBox(height: 22),
+                      const SizedBox(height: 22),
 
-                  // 2. Greeting & Owner Role Badge
-                  _buildGreetingAndRole(context),
+                      // 2. Greeting & Owner Role Badge
+                      _buildGreetingAndRole(context),
 
-                  const SizedBox(height: 22),
+                      const SizedBox(height: 22),
 
-                  // 3. Primary 4 Navigation Tiles (Appointments, Billing POS, Customers, Inventory)
-                  _buildPrimaryNavigationTiles(context),
+                      // 3. Primary 4 Navigation Tiles (Appointments, Billing POS, Customers, Inventory)
+                      _buildPrimaryNavigationTiles(context),
 
-                  const SizedBox(height: 22),
+                      const SizedBox(height: 22),
 
-                  // 4. Today's Overview Card (Excluding Profit slide per user request)
-                  _buildTodaysOverviewCard(context),
+                      // 4. Today's Overview Card (Excluding Profit slide per user request)
+                      _buildTodaysOverviewCard(context),
 
-                  const SizedBox(height: 26),
+                      const SizedBox(height: 26),
 
-                  // 5. Quick Actions Row
-                  _buildQuickActions(context),
+                      // 5. Quick Actions Row
+                      _buildQuickActions(context),
 
-                  const SizedBox(height: 26),
+                      const SizedBox(height: 26),
 
-                  // 6. Today's Appointments List
-                  _buildTodaysAppointments(context),
+                      // 6. Today's Appointments List
+                      _buildTodaysAppointments(context),
 
-                  const SizedBox(height: 20),
-                ],
-              ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -96,42 +103,11 @@ class OverviewDashboardScreen extends StatelessWidget {
         // Left: Ruvexi Brand Logo
         const RuvexiLogoWidget(fontSize: 18, showSubtitle: true),
 
-        // Center / Right: Salon selector & Notification Bell
+        // Center / Right: Branch selector & Notification Bell
         Row(
           children: [
-            // Salon Selector Dropdown
-            GestureDetector(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Active atelier: ${appState.salonName} (${appState.salonLocation})")),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF101311),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.content_cut_rounded, size: 14, color: Colors.white70),
-                    const SizedBox(width: 6),
-                    Text(
-                      appState.salonName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Colors.white70),
-                  ],
-                ),
-              ),
-            ),
+            // Interactive Branch Selector Dropdown Pill
+            BranchTopDropdownPill(appState: appState),
 
             const SizedBox(width: 10),
 

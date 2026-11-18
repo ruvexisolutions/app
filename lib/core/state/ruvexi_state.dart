@@ -1006,6 +1006,17 @@ class RuvexiAppState extends ChangeNotifier {
 
   void setActiveBranch(SalonBranch branch) {
     activeBranch = branch;
+    if (branch.chairs > 0) {
+      salonChairs = branch.chairs;
+      _rebuildSeats(branch.chairs);
+    }
+    final locParts = [branch.address, branch.city].where((s) => s.trim().isNotEmpty).toList();
+    if (locParts.isNotEmpty) {
+      salonLocation = locParts.join(", ");
+    }
+    if (branch.phone.trim().isNotEmpty) {
+      salonPhone = branch.phone.trim();
+    }
     notifyListeners();
   }
 

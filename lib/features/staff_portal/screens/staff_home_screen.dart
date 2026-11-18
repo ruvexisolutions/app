@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/shared/widgets/ruvexi_logo.dart';
+import 'package:ruvexi_mobile/shared/widgets/branch_switcher_sheet.dart';
 import 'package:ruvexi_mobile/features/staff_portal/screens/check_in_customer_screen.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
 import 'package:ruvexi_mobile/features/staff_portal/screens/in_salon_screen.dart';
@@ -101,29 +102,35 @@ class StaffHomeScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const RuvexiLogoWidget(fontSize: 17, showSubtitle: true),
-                          Stack(
-                            clipBehavior: Clip.none,
+                          Row(
                             children: [
-                              GestureDetector(
-                                onTap: () => showSalonNotificationModal(context, appState),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF101311),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+                              BranchTopDropdownPill(appState: appState),
+                              const SizedBox(width: 8),
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => showSalonNotificationModal(context, appState),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF101311),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white.withOpacity(0.12)),
+                                      ),
+                                      child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
+                                    ),
                                   ),
-                                  child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
-                                ),
-                              ),
-                              Positioned(
-                                top: 2,
-                                right: 3,
-                                child: Container(
-                                  width: 7.5,
-                                  height: 7.5,
-                                  decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle),
-                                ),
+                                  Positioned(
+                                    top: 2,
+                                    right: 3,
+                                    child: Container(
+                                      width: 7.5,
+                                      height: 7.5,
+                                      decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
