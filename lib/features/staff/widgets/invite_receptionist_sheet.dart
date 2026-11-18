@@ -366,7 +366,7 @@ class _InviteReceptionistSheetState extends State<InviteReceptionistSheet> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (b.isPrimary)
+                        if (widget.appState.activeBranch?.id == b.id)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -374,7 +374,7 @@ class _InviteReceptionistSheetState extends State<InviteReceptionistSheet> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
-                              "PRIMARY",
+                              "CURRENT",
                               style: TextStyle(color: Color(0xFF22C55E), fontSize: 9, fontWeight: FontWeight.bold),
                             ),
                           ),

@@ -92,9 +92,9 @@ class StaffMoreScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        final inSalon = widget.appState.inSalonClients.where((c) => c.status == "In Salon").toList();
-        final waiting = widget.appState.inSalonClients.where((c) => c.status == "Waiting").toList();
-        final availableSeats = widget.appState.seats.where((s) => !s.isInUse).toList();
+        final inSalon = appState.inSalonClients.where((c) => c.status == "In Salon").toList();
+        final waiting = appState.inSalonClients.where((c) => c.status == "Waiting").toList();
+        final availableSeats = appState.seats.where((s) => !s.isInUse).toList();
 
         return Padding(
           padding: const EdgeInsets.all(22),
