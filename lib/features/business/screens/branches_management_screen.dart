@@ -385,6 +385,52 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.appState.canSwitchBranch) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0D0F0E),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF101311),
+          elevation: 0,
+          title: const Text(
+            "Branches & Outlets",
+            style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                  ),
+                  child: const Icon(Icons.lock_person_outlined, color: Colors.amber, size: 30),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Branch Management Restricted",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Front desk receptionists are strictly locked to their single assigned branch (${widget.appState.activeBranch?.name ?? 'Assigned Branch'}). Outlet switching and branch network creation require Salon Owner privileges.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final branches = widget.appState.branches;
     final activeId = widget.appState.activeBranch?.id ?? (branches.isNotEmpty ? branches.first.id : "");
 

@@ -3,6 +3,19 @@ import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
 import 'package:ruvexi_mobile/features/business/screens/branches_management_screen.dart';
 
 void showBranchSwitcherSheet(BuildContext context, RuvexiAppState appState) {
+  if (!appState.canSwitchBranch) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          "Terminal locked to ${appState.activeBranch?.name ?? 'assigned branch'}. Receptionists cannot switch branches.",
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    return;
+  }
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -259,29 +272,32 @@ class BranchSwitcherSheet extends StatelessWidget {
           ],
           const SizedBox(height: 18),
 
-          // Action Button: Add/Manage Outlets
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => BranchesManagementScreen(appState: appState)),
-                );
-              },
-              icon: const Icon(Icons.add_business_outlined, color: Color(0xFFFACC15), size: 16),
-              label: const Text(
-                "Manage & Add Outlets",
-                style: TextStyle(color: Color(0xFFFACC15), fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: BorderSide(color: const Color(0xFFFACC15).withOpacity(0.4)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          // Action Button: Add/Manage Outlets (Manager/Owner only)
+          if (appState.canSwitchBranch) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => BranchesManagementScreen(appState: appState)),
+                  );
+                },
+                icon: const Icon(Icons.add_business_outlined, color: Color(0xFFFACC15), size: 16),
+                label: const Text(
+                  "Manage & Add Outlets",
+                  style: TextStyle(color: Color(0xFFFACC15), fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: BorderSide(color: const Color(0xFFFACC15).withOpacity(0.4)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -297,10 +313,26 @@ class BranchTopDropdownPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeBranch = appState.activeBranch;
     final currentBranchLabel = activeBranch != null ? activeBranch.name : appState.salonName;
-    final hasMultipleBranches = appState.branches.length > 1;
+    final canSwitch = appState.canSwitchBranch;
+    final hasMultipleBranches = appState.branches.length > 1 && canSwitch;
 
     return GestureDetector(
-      onTap: () => showBranchSwitcherSheet(context, appState),
+      onTap: () {
+        if (!canSwitch) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Terminal locked to ${activeBranch?.name ?? 'assigned branch'}. Receptionists cannot switch branches.",
+              ),
+              backgroundColor: const Color(0xFF1E293B),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        showBranchSwitcherSheet(context, appState);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6.5),
         decoration: BoxDecoration(
@@ -316,9 +348,11 @@ class BranchTopDropdownPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.storefront_rounded,
-              size: 14,
-              color: hasMultipleBranches ? const Color(0xFF22C55E) : Colors.white70,
+              canSwitch ? Icons.storefront_rounded : Icons.lock_outline_rounded,
+              size: 13,
+              color: canSwitch
+                  ? (hasMultipleBranches ? const Color(0xFF22C55E) : Colors.white70)
+                  : const Color(0xFF94A3B8),
             ),
             const SizedBox(width: 6),
             ConstrainedBox(
@@ -334,12 +368,14 @@ class BranchTopDropdownPill extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: hasMultipleBranches ? const Color(0xFF22C55E) : Colors.white70,
-            ),
+            if (canSwitch && hasMultipleBranches) ...[
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: Color(0xFF22C55E),
+              ),
+            ],
           ],
         ),
       ),

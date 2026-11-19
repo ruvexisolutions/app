@@ -572,6 +572,8 @@ class RuvexiAppState extends ChangeNotifier {
   // Role state (RBAC enforced)
   String backendRole = "SALON_RECEPTIONIST";
   String userRole = "Receptionist"; // UI display mode: "Owner" | "Receptionist"
+  String userBranchId = "";
+
   bool get canSwitchRoles {
     final normalized = backendRole.toUpperCase();
     return normalized == "SALON_MANAGER" ||
@@ -580,6 +582,10 @@ class RuvexiAppState extends ChangeNotifier {
         normalized == "ADMIN" ||
         normalized == "MASTER_ADMIN";
   }
+
+  /// Strictly checks whether the user has multi-branch authority to switch locations.
+  /// Front desk receptionists are permanently locked to their single assigned branch.
+  bool get canSwitchBranch => canSwitchRoles;
 
   double todayRevenue = 0.0;
   int todayAppointmentsCount = 0;
@@ -703,6 +709,7 @@ class RuvexiAppState extends ChangeNotifier {
     conciergeUpiId = "";
     backendRole = "SALON_RECEPTIONIST";
     userRole = "Receptionist";
+    userBranchId = "";
     currentUserName = "";
     currentUserEmail = "";
     todayRevenue = 0.0;
@@ -731,6 +738,7 @@ class RuvexiAppState extends ChangeNotifier {
       currentUserName = (userMap['name'] ?? '').toString();
       currentUserEmail = (userMap['email'] ?? '').toString();
       backendRole = (userMap['role'] ?? 'SALON_RECEPTIONIST').toString().toUpperCase();
+      userBranchId = (userMap['branchId'] ?? userMap['branch_id'] ?? '').toString();
       userRole = canSwitchRoles ? 'Owner' : 'Receptionist';
       if (currentUserName.isNotEmpty) {
         api.setUserName(currentUserName);
@@ -1051,7 +1059,14 @@ class RuvexiAppState extends ChangeNotifier {
       branches
         ..clear()
         ..addAll(rawBranches.whereType<Map>().map((m) => SalonBranch.fromJson(Map<String, dynamic>.from(m))));
-      if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
+      if (!canSwitchBranch && userBranchId.isNotEmpty) {
+        final assigned = branches.where((b) => b.id == userBranchId || b.name.toLowerCase() == userBranchId.toLowerCase()).toList();
+        if (assigned.isNotEmpty) {
+          activeBranch = assigned.first;
+        } else if (branches.isNotEmpty) {
+          activeBranch = branches.first;
+        }
+      } else if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
         activeBranch = branches.first;
       }
       notifyListeners();
@@ -1068,6 +1083,10 @@ class RuvexiAppState extends ChangeNotifier {
     String? email,
     int chairs = 6,
   }) async {
+    if (!canSwitchBranch) {
+      debugPrint("Branch creation blocked: Receptionists cannot add branches.");
+      return null;
+    }
     final res = await api.createBranch({
       'name': name.trim(),
       'city': city.trim(),
@@ -1085,6 +1104,10 @@ class RuvexiAppState extends ChangeNotifier {
   }
 
   Future<void> updateBranch(String branchId, Map<String, dynamic> data) async {
+    if (!canSwitchBranch) {
+      debugPrint("Branch update blocked: Receptionists cannot modify branches.");
+      return;
+    }
     final res = await api.updateBranch(branchId, data);
     final updated = SalonBranch.fromJson(res);
     final idx = branches.indexWhere((b) => b.id == branchId);
@@ -1098,6 +1121,10 @@ class RuvexiAppState extends ChangeNotifier {
   }
 
   Future<void> deleteBranch(String branchId) async {
+    if (!canSwitchBranch) {
+      debugPrint("Branch delete blocked: Receptionists cannot delete branches.");
+      return;
+    }
     await api.deleteBranch(branchId);
     branches.removeWhere((b) => b.id == branchId);
     if (activeBranch?.id == branchId) {
@@ -1145,7 +1172,6 @@ class RuvexiAppState extends ChangeNotifier {
 
   void recalculateBranchMetrics() {
     final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final curBranchId = activeBranch?.id;
 
     final branchInvs = branchInvoices;
     double revToday = 0.0;
@@ -1178,6 +1204,10 @@ class RuvexiAppState extends ChangeNotifier {
   }
 
   void setActiveBranch(SalonBranch branch) {
+    if (!canSwitchBranch) {
+      debugPrint("Branch switch blocked: Receptionists are locked to their assigned branch.");
+      return;
+    }
     activeBranch = branch;
     if (branch.chairs > 0) {
       salonChairs = branch.chairs;
