@@ -560,6 +560,10 @@ class RuvexiAppState extends ChangeNotifier {
   String salonUpiId = "";
   int salonChairs = 6;
 
+  String get salonAddress => salonLocation;
+  String get salonCity => activeBranch?.city ?? "";
+  String get activeBranchName => activeBranch?.name ?? (branches.isNotEmpty ? branches.first.name : "");
+
   // Subscription state (fetched live from Railway)
   String subscriptionStatus = "trial";
   String subscriptionPlan = "free_trial";
@@ -1038,6 +1042,26 @@ class RuvexiAppState extends ChangeNotifier {
       if (trimmedGstin != null && trimmedGstin.isNotEmpty) 'gstin': trimmedGstin,
       if (trimmedPhone != null && trimmedPhone.isNotEmpty) 'phone': trimmedPhone,
       if (trimmedAddress != null && trimmedAddress.isNotEmpty) 'address': trimmedAddress,
+    });
+    _applyUserAndSalon(null, updated);
+    notifyListeners();
+  }
+
+  Future<void> updateSalonDetails({
+    required String name,
+    String? branch,
+    String? city,
+    String? address,
+    String? phone,
+    int? chairs,
+  }) async {
+    final updated = await api.updateSalonSettings({
+      'name': name.trim(),
+      if (branch != null && branch.trim().isNotEmpty) 'branch': branch.trim(),
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      if (address != null && address.trim().isNotEmpty) 'address': address.trim(),
+      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      if (chairs != null) 'chairs': chairs,
     });
     _applyUserAndSalon(null, updated);
     notifyListeners();
