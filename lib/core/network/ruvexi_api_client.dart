@@ -16,6 +16,8 @@ class RuvexiApiException implements Exception {
 
 class RuvexiApiClient {
   static const String _tokenStorageKey = 'ruvexi_jwt_token';
+  static const String _userNameKey = 'ruvexi_user_name';
+  static const String _userEmailKey = 'ruvexi_user_email';
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
@@ -34,9 +36,17 @@ class RuvexiApiClient {
     await _storage.write(key: _tokenStorageKey, value: token);
   }
 
+  Future<String?> getUserName() async => _storage.read(key: _userNameKey);
+  Future<void> setUserName(String name) async => _storage.write(key: _userNameKey, value: name);
+
+  Future<String?> getUserEmail() async => _storage.read(key: _userEmailKey);
+  Future<void> setUserEmail(String email) async => _storage.write(key: _userEmailKey, value: email);
+
   Future<void> clearToken() async {
     _cachedToken = null;
     await _storage.delete(key: _tokenStorageKey);
+    await _storage.delete(key: _userNameKey);
+    await _storage.delete(key: _userEmailKey);
   }
 
   Uri _buildUri(String path) {

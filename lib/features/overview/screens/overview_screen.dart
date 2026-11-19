@@ -161,7 +161,7 @@ class OverviewDashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Good Evening,",
+              appState.getTimeBasedGreeting(),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 13,
@@ -170,18 +170,18 @@ class OverviewDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Row(
-              children: const [
+              children: [
                 Text(
-                  "Darshan",
-                  style: TextStyle(
+                  appState.displayFirstName,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.2,
                   ),
                 ),
-                SizedBox(width: 6),
-                Text("👋", style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                const Text("👋", style: TextStyle(fontSize: 18)),
               ],
             ),
           ],

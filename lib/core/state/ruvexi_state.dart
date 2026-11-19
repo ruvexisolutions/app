@@ -592,6 +592,55 @@ class RuvexiAppState extends ChangeNotifier {
   String currentUserName = "";
   String currentUserEmail = "";
 
+  /// Dynamic time-based greeting (e.g. Good Morning, Good Afternoon, Good Evening)
+  String getTimeBasedGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 4 && hour < 12) {
+      return "Good Morning,";
+    } else if (hour >= 12 && hour < 17) {
+      return "Good Afternoon,";
+    } else {
+      return "Good Evening,";
+    }
+  }
+
+  String _formatName(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return "";
+    return trimmed.split(RegExp(r'\s+')).map((part) {
+      if (part.isEmpty) return "";
+      return part[0].toUpperCase() + (part.length > 1 ? part.substring(1).toLowerCase() : "");
+    }).join(' ');
+  }
+
+  /// Real user display name formatted cleanly (title-cased)
+  String get displayName {
+    if (currentUserName.trim().isNotEmpty) {
+      return _formatName(currentUserName);
+    }
+    if (currentUserEmail.trim().isNotEmpty) {
+      final prefix = currentUserEmail.split('@').first.trim();
+      if (prefix.isNotEmpty) {
+        return _formatName(prefix.replaceAll(RegExp(r'[._0-9]'), ' ').trim());
+      }
+    }
+    return userRole == "Owner" ? "Salon Owner" : "Front Desk Receptionist";
+  }
+
+  /// Real user first name for friendly greetings
+  String get displayFirstName {
+    final name = displayName;
+    if (name.isEmpty) return "Partner";
+    return name.split(' ').first;
+  }
+
+  /// Single letter avatar initial
+  String get userInitial {
+    final name = displayName;
+    if (name.isEmpty) return "R";
+    return name[0].toUpperCase();
+  }
+
   Customer? posSelectedCustomer;
   InSalonClient? activeBillingClient;
   int staffCompletedCount = 0;
@@ -683,6 +732,12 @@ class RuvexiAppState extends ChangeNotifier {
       currentUserEmail = (userMap['email'] ?? '').toString();
       backendRole = (userMap['role'] ?? 'SALON_RECEPTIONIST').toString().toUpperCase();
       userRole = canSwitchRoles ? 'Owner' : 'Receptionist';
+      if (currentUserName.isNotEmpty) {
+        api.setUserName(currentUserName);
+      }
+      if (currentUserEmail.isNotEmpty) {
+        api.setUserEmail(currentUserEmail);
+      }
     }
     if (salonMap != null) {
       salonId = (salonMap['id'] ?? '').toString();
@@ -709,6 +764,16 @@ class RuvexiAppState extends ChangeNotifier {
       isAuthenticated = false;
       notifyListeners();
       return false;
+    }
+
+    // Pre-hydrate cached user profile immediately for zero-flicker UI
+    final cachedName = await api.getUserName();
+    final cachedEmail = await api.getUserEmail();
+    if (cachedName != null && cachedName.isNotEmpty) {
+      currentUserName = cachedName;
+    }
+    if (cachedEmail != null && cachedEmail.isNotEmpty) {
+      currentUserEmail = cachedEmail;
     }
 
     try {

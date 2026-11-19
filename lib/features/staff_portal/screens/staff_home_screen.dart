@@ -147,9 +147,9 @@ class StaffHomeScreen extends StatelessWidget {
                               CircleAvatar(
                                 radius: 22,
                                 backgroundColor: const Color(0xFF1B241E),
-                                child: const Text(
-                                  "A",
-                                  style: TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold, fontSize: 18),
+                                child: Text(
+                                  appState.userInitial,
+                                  style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold, fontSize: 18),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -157,17 +157,17 @@ class StaffHomeScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Good Evening,",
+                                    appState.getTimeBasedGreeting(),
                                     style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 12.5),
                                   ),
-                                  const Row(
+                                  Row(
                                     children: [
                                       Text(
-                                        "Anjali",
-                                        style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.bold),
+                                        appState.displayFirstName,
+                                        style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.bold),
                                       ),
-                                      SizedBox(width: 6),
-                                      Text("👋", style: TextStyle(fontSize: 17)),
+                                      const SizedBox(width: 6),
+                                      const Text("👋", style: TextStyle(fontSize: 17)),
                                     ],
                                   ),
                                 ],

@@ -26,15 +26,15 @@ class StaffMoreScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 34,
-              backgroundColor: Color(0xFF1A2820),
-              child: Text("A", style: TextStyle(color: Color(0xFF22C55E), fontSize: 26, fontWeight: FontWeight.bold)),
+              backgroundColor: const Color(0xFF1A2820),
+              child: Text(appState.userInitial, style: const TextStyle(color: Color(0xFF22C55E), fontSize: 26, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 12),
-            const Text("Anjali", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(appState.displayName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text("Front Desk Receptionist • ${appState.salonName}", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+            Text("${appState.userRole == 'Owner' ? 'Salon Owner' : 'Front Desk Receptionist'} • ${appState.salonName}", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
