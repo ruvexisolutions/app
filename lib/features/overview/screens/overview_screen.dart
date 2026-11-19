@@ -10,6 +10,7 @@ import 'package:ruvexi_mobile/features/services/screens/services_screen.dart';
 import 'package:ruvexi_mobile/features/inventory/screens/inventory_screen.dart';
 import 'package:ruvexi_mobile/features/reports/screens/reports_analytics_screen.dart';
 import 'package:ruvexi_mobile/shared/widgets/salon_notification_dialog.dart';
+import 'package:ruvexi_mobile/shared/widgets/salon_onboarding_sheet.dart';
 
 class OverviewDashboardScreen extends StatelessWidget {
   final RuvexiAppState appState;
@@ -62,6 +63,11 @@ class OverviewDashboardScreen extends StatelessWidget {
 
                       // 2. Greeting & Owner Role Badge
                       _buildGreetingAndRole(context),
+
+                      if (appState.canSwitchRoles && (appState.catalog.isEmpty || appState.salonUpiId.isEmpty || appState.salonAddress.isEmpty)) ...[
+                        const SizedBox(height: 18),
+                        _buildOnboardingNoticeCard(context),
+                      ],
 
                       const SizedBox(height: 22),
 
@@ -902,6 +908,85 @@ class OverviewDashboardScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOnboardingNoticeCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141715),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFACC15).withValues(alpha: 0.6), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFACC15).withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFACC15).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFFACC15), size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "First-Time Studio Onboarding",
+                      style: TextStyle(color: Color(0xFFFACC15), fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "Configure your branch, UPI ID & first service to unlock billing.",
+                      style: TextStyle(color: Colors.white70, fontSize: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFACC15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(21)),
+              ),
+              onPressed: () {
+                SalonOnboardingSheet.show(
+                  context,
+                  appState: appState,
+                  onComplete: (idx) {
+                    if (onNavigateToTab != null) {
+                      onNavigateToTab!(idx);
+                    }
+                  },
+                );
+              },
+              icon: const Icon(Icons.rocket_launch_rounded, color: Colors.black, size: 16),
+              label: const Text(
+                "Complete Setup & Enable Billing",
+                style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
