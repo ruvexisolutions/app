@@ -6,7 +6,7 @@ class RuvexiApiConfig {
 
   static const String webAppUrl = String.fromEnvironment(
     'RUVEXI_WEB_URL',
-    defaultValue: 'https://ruvexi.netlify.app',
+    defaultValue: 'https://ruvexisolutions.com',
   );
 
   // Default to the official Google OAuth Client ID
