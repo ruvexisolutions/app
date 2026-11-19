@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (raw.contains('10') || raw.contains('DEVELOPER_ERROR') || raw.contains('sign_in_failed')) {
         friendlyMessage =
-            "Google Sign-In requires registering the app's SHA-1 fingerprint in Google Cloud Console.\n\nPlease sign in with Email & Password or use Phone OTP (8296294666).";
+            "Google Sign-In requires registering the app's SHA-1 fingerprint in Google Cloud Console.\n\nPlease sign in with Email & Password or use Email OTP.";
       } else if (raw.contains('cancelled') || raw.contains('canceled')) {
         friendlyMessage = "Google sign-in was cancelled.";
       } else {
@@ -111,9 +111,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Handle Phone OTP Sign-In
+  // Handle Email OTP Sign-In
   void _showOtpSignInSheet() {
-    final phoneCtrl = TextEditingController(text: "8296294666");
+    final emailCtrl = TextEditingController();
     final otpCtrl = TextEditingController();
     bool otpSent = false;
     bool isSubmitting = false;
@@ -125,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: const Color(0xFF101211),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        side: BorderSide(color: Color(0xFF22C55E), width: 1.2),
+        side: BorderSide(color: Color(0xFFFACC15), width: 1.2),
       ),
       builder: (ctx) {
         return StatefulBuilder(
@@ -145,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        "Manager Sign In with Phone OTP",
+                        "Sign In with Email OTP",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -161,8 +161,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 6),
                   Text(
                     otpSent
-                        ? "Enter the 6-digit verification code dispatched to your phone/email."
-                        : "Enter your registered Salon Manager phone number to receive a secure login code.",
+                        ? "Enter the 6-digit verification code dispatched to ${emailCtrl.text.trim()}."
+                        : "Enter your registered salon email address to receive a secure login code.",
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.55),
                       fontSize: 12.5,
@@ -192,17 +192,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: Border.all(color: const Color(0xFF272B28), width: 1.2),
                       ),
                       child: TextField(
-                        controller: phoneCtrl,
-                        keyboardType: TextInputType.phone,
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(color: Colors.white, fontSize: 14),
                         decoration: InputDecoration(
-                          hintText: "Phone Number (e.g. 8296294666)",
+                          hintText: "Email address (e.g. name@salon.com)",
                           hintStyle: TextStyle(
                             color: Colors.white.withOpacity(0.42),
                             fontSize: 13,
                           ),
                           prefixIcon: Icon(
-                            Icons.phone_android_rounded,
+                            Icons.alternate_email_rounded,
                             color: Colors.white.withOpacity(0.65),
                             size: 20,
                           ),
@@ -217,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF22C55E),
+                          backgroundColor: const Color(0xFFFACC15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -225,14 +225,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: isSubmitting
                             ? null
                             : () async {
-                                final phone = phoneCtrl.text.trim();
-                                if (phone.isEmpty) return;
+                                final email = emailCtrl.text.trim();
+                                if (email.isEmpty || !email.contains('@')) {
+                                  setSheetState(() => otpError = "Please enter a valid registered email address");
+                                  return;
+                                }
                                 setSheetState(() {
                                   isSubmitting = true;
                                   otpError = null;
                                 });
                                 try {
-                                  await widget.appState.requestOtp(phone);
+                                  await widget.appState.requestOtp(email);
                                   setSheetState(() {
                                     isSubmitting = false;
                                     otpSent = true;
@@ -296,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF22C55E),
+                          backgroundColor: const Color(0xFFFACC15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -312,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 });
                                 try {
                                   await widget.appState.verifyOtp(
-                                    phone: phoneCtrl.text.trim(),
+                                    emailOrPhone: emailCtrl.text.trim(),
                                     otp: code,
                                   );
                                   if (!mounted) return;
@@ -352,8 +355,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextButton(
                         onPressed: () => setSheetState(() => otpSent = false),
                         child: const Text(
-                          "Change Phone Number",
-                          style: TextStyle(color: Color(0xFF22C55E), fontSize: 12),
+                          "Change Email Address",
+                          style: TextStyle(color: Color(0xFFFACC15), fontSize: 12),
                         ),
                       ),
                     ),
@@ -966,7 +969,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 12),
 
-                    // Phone OTP Sign-In Button
+                    // Email OTP Sign-In Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
@@ -974,7 +977,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: OutlinedButton.styleFrom(
                           backgroundColor: const Color(0xFF141715),
                           side: const BorderSide(
-                            color: Color(0xFF22C55E),
+                            color: Color(0xFFFACC15),
                             width: 1.0,
                           ),
                           shape: RoundedRectangleBorder(
@@ -982,11 +985,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         onPressed: _isLoading ? null : _showOtpSignInSheet,
-                        icon: const Icon(Icons.phone_iphone_rounded, color: Color(0xFF22C55E), size: 18),
+                        icon: const Icon(Icons.mark_email_read_rounded, color: Color(0xFFFACC15), size: 18),
                         label: const Text(
-                          "Sign In with Phone OTP",
+                          "Sign In with Email OTP",
                           style: TextStyle(
-                            color: Color(0xFF22C55E),
+                            color: Color(0xFFFACC15),
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                           ),

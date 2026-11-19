@@ -879,13 +879,17 @@ class RuvexiAppState extends ChangeNotifier {
     await api.requestPasswordReset(email);
   }
 
-  Future<void> requestOtp(String phone) async {
-    await api.requestOtp(phone);
+  Future<void> requestOtp(String emailOrPhone) async {
+    await api.requestOtp(emailOrPhone);
   }
 
-  Future<bool> verifyOtp({required String phone, required String otp}) async {
+  Future<bool> verifyOtp({
+    String emailOrPhone = '',
+    String? phone,
+    required String otp,
+  }) async {
     lastSyncError = null;
-    final res = await api.verifyOtp(phone: phone, otp: otp);
+    final res = await api.verifyOtp(emailOrPhone: emailOrPhone, phone: phone, otp: otp);
     _applyUserAndSalon(
       res['user'] is Map ? Map<String, dynamic>.from(res['user']) : null,
       res['salon'] is Map ? Map<String, dynamic>.from(res['salon']) : null,

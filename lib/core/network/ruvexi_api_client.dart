@@ -191,24 +191,33 @@ class RuvexiApiClient {
     return map;
   }
 
-  Future<Map<String, dynamic>> requestOtp(String phone) async {
+  Future<Map<String, dynamic>> requestOtp(String emailOrPhone) async {
     final res = await _request(
       'POST',
       '/auth/otp/request',
-      body: {'phone': phone},
+      body: {
+        'email': emailOrPhone,
+        'phone': emailOrPhone,
+      },
       requireAuth: false,
     );
     return Map<String, dynamic>.from(res as Map);
   }
 
   Future<Map<String, dynamic>> verifyOtp({
-    required String phone,
+    String emailOrPhone = '',
+    String? phone,
     required String otp,
   }) async {
+    final identifier = emailOrPhone.isNotEmpty ? emailOrPhone : (phone ?? '');
     final res = await _request(
       'POST',
       '/auth/otp/verify',
-      body: {'phone': phone, 'otp': otp},
+      body: {
+        'email': identifier,
+        'phone': identifier,
+        'otp': otp,
+      },
       requireAuth: false,
     );
     final map = Map<String, dynamic>.from(res as Map);
