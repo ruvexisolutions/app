@@ -506,6 +506,8 @@ class SalonBranch {
   final String email;
   final int chairs;
   final bool isActive;
+  final String upiId;
+  final String upiPayeeName;
 
   SalonBranch({
     required this.id,
@@ -517,6 +519,8 @@ class SalonBranch {
     this.email = "",
     this.chairs = 6,
     this.isActive = true,
+    this.upiId = "",
+    this.upiPayeeName = "",
   });
 
   factory SalonBranch.fromJson(Map<String, dynamic> json) {
@@ -532,6 +536,8 @@ class SalonBranch {
           ? (json['chairs'] as num).toInt()
           : int.tryParse('${json['chairs']}') ?? 6,
       isActive: json['isActive'] != false,
+      upiId: (json['upiId'] ?? '').toString(),
+      upiPayeeName: (json['upiPayeeName'] ?? '').toString(),
     );
   }
 
@@ -545,6 +551,8 @@ class SalonBranch {
     'email': email,
     'chairs': chairs,
     'isActive': isActive,
+    'upiId': upiId,
+    'upiPayeeName': upiPayeeName,
   };
 }
 
@@ -1110,6 +1118,8 @@ class RuvexiAppState extends ChangeNotifier {
     String? phone,
     String? email,
     int chairs = 6,
+    String? upiId,
+    String? upiPayeeName,
   }) async {
     if (!canSwitchBranch) {
       debugPrint("Branch creation blocked: Receptionists cannot add branches.");
@@ -1121,6 +1131,8 @@ class RuvexiAppState extends ChangeNotifier {
       if (address != null && address.trim().isNotEmpty) 'address': address.trim(),
       if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
       if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      if (upiId != null && upiId.trim().isNotEmpty) 'upiId': upiId.trim(),
+      if (upiPayeeName != null && upiPayeeName.trim().isNotEmpty) 'upiPayeeName': upiPayeeName.trim(),
       'chairs': chairs,
       'isActive': true,
     });

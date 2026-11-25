@@ -31,6 +31,8 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
     final addressCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
+    final upiIdCtrl = TextEditingController();
+    final upiPayeeCtrl = TextEditingController();
     int chairs = 6;
     bool isSubmitting = false;
 
@@ -116,6 +118,34 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                   ),
                 ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: upiIdCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Branch UPI ID (Optional)",
+                    hintText: "Leave blank to use salon default UPI",
+                    labelStyle: const TextStyle(color: Color(0xFF22C55E), fontSize: 12),
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: upiPayeeCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Branch UPI Payee Name (Optional)",
+                    hintText: "e.g. Ruvexi Indiranagar",
+                    labelStyle: const TextStyle(color: Color(0xFF22C55E), fontSize: 12),
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -177,6 +207,8 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
                           phone: phoneCtrl.text.trim(),
                           email: emailCtrl.text.trim(),
                           chairs: chairs,
+                          upiId: upiIdCtrl.text.trim(),
+                          upiPayeeName: upiPayeeCtrl.text.trim(),
                         );
                         if (!mounted) return;
                         Navigator.pop(ctx);
@@ -207,6 +239,8 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
     final cityCtrl = TextEditingController(text: branch.city);
     final addressCtrl = TextEditingController(text: branch.address);
     final phoneCtrl = TextEditingController(text: branch.phone);
+    final upiIdCtrl = TextEditingController(text: branch.upiId);
+    final upiPayeeCtrl = TextEditingController(text: branch.upiPayeeName);
     int chairs = branch.chairs;
     bool isSubmitting = false;
 
@@ -276,6 +310,32 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                TextField(
+                  controller: upiIdCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Branch UPI ID (Optional)",
+                    hintText: "Leave blank to use salon default UPI",
+                    labelStyle: const TextStyle(color: Color(0xFF22C55E), fontSize: 12),
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: upiPayeeCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Branch UPI Payee Name (Optional)",
+                    labelStyle: const TextStyle(color: Color(0xFF22C55E), fontSize: 12),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -312,6 +372,8 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
                           'address': addressCtrl.text.trim(),
                           'phone': phoneCtrl.text.trim(),
                           'chairs': chairs,
+                          'upiId': upiIdCtrl.text.trim(),
+                          'upiPayeeName': upiPayeeCtrl.text.trim(),
                         });
                         if (!mounted) return;
                         Navigator.pop(ctx);

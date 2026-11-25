@@ -26,13 +26,22 @@ class _UpiQrModalDialogState extends State<UpiQrModalDialog> {
   bool _isConfirming = false;
 
   String get _upiId {
+    final branchUpi = (widget.appState.activeBranch?.upiId ?? '').trim();
+    if (branchUpi.isNotEmpty) return branchUpi;
     if (widget.appState.salonUpiId.isNotEmpty) return widget.appState.salonUpiId;
     return "ruvexi.${widget.appState.salonName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@upi";
   }
 
+  String get _upiPayeeName {
+    final branchUpi = (widget.appState.activeBranch?.upiId ?? '').trim();
+    final branchPayee = (widget.appState.activeBranch?.upiPayeeName ?? '').trim();
+    if (branchUpi.isNotEmpty && branchPayee.isNotEmpty) return branchPayee;
+    return widget.appState.salonName;
+  }
+
   String get _upiIntentUri {
     final cleanUpi = _upiId;
-    final cleanName = Uri.encodeComponent(widget.appState.salonName);
+    final cleanName = Uri.encodeComponent(_upiPayeeName);
     final amt = widget.amount.toStringAsFixed(2);
     final note = Uri.encodeComponent("Invoice ${widget.invoiceNumber}");
     return "upi://pay?pa=$cleanUpi&pn=$cleanName&am=$amt&cu=INR&tn=$note";
