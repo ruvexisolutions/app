@@ -186,6 +186,7 @@ class _ServicesPricingScreenState extends State<ServicesPricingScreen> {
     final priceCtrl = TextEditingController();
     final durationCtrl = TextEditingController(text: "30");
     String category = "Hair";
+    bool isSaving = false;
 
     showDialog(
       context: context,
@@ -246,23 +247,43 @@ class _ServicesPricingScreenState extends State<ServicesPricingScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
-              onPressed: () {
-                if (nameCtrl.text.isNotEmpty && priceCtrl.text.isNotEmpty) {
-                  final newSvc = ServiceItem(
-                    id: "s_${DateTime.now().millisecondsSinceEpoch}",
-                    name: nameCtrl.text.trim(),
-                    category: category,
-                    price: double.tryParse(priceCtrl.text) ?? 499.0,
-                    durationMinutes: int.tryParse(durationCtrl.text) ?? 30,
-                  );
-                  widget.appState.addService(newSvc);
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("${newSvc.name} added to catalog")),
-                  );
-                }
-              },
-              child: const Text("Save Service", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (nameCtrl.text.trim().isEmpty || priceCtrl.text.trim().isEmpty) return;
+                      final newSvc = ServiceItem(
+                        id: "s_${DateTime.now().millisecondsSinceEpoch}",
+                        name: nameCtrl.text.trim(),
+                        category: category,
+                        price: double.tryParse(priceCtrl.text) ?? 499.0,
+                        durationMinutes: int.tryParse(durationCtrl.text) ?? 30,
+                      );
+                      setModalState(() => isSaving = true);
+                      try {
+                        await widget.appState.addService(newSvc);
+                        if (!mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(content: Text("${newSvc.name} added to catalog")),
+                        );
+                      } catch (e) {
+                        setModalState(() => isSaving = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text("Failed to save service: $e"),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                    )
+                  : const Text("Save Service", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

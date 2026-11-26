@@ -1673,6 +1673,7 @@ class RuvexiAppState extends ChangeNotifier {
       catalog.remove(service);
       lastSyncError = e.toString();
       notifyListeners();
+      rethrow;
     }
   }
 
