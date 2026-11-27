@@ -1041,6 +1041,7 @@ class RuvexiAppState extends ChangeNotifier {
       if (trimmedAddress != null && trimmedAddress.isNotEmpty) 'address': trimmedAddress,
     });
     _applyUserAndSalon(null, updated);
+    await fetchBranches();
     notifyListeners();
   }
 
@@ -1061,6 +1062,7 @@ class RuvexiAppState extends ChangeNotifier {
       if (chairs != null) 'chairs': chairs,
     });
     _applyUserAndSalon(null, updated);
+    await fetchBranches();
     notifyListeners();
   }
 

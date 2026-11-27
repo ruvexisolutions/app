@@ -27,7 +27,7 @@ class _BranchesManagementScreenState extends State<BranchesManagementScreen> {
 
   void _showAddBranchDialog() {
     final nameCtrl = TextEditingController();
-    final cityCtrl = TextEditingController(text: widget.appState.salonLocation.isNotEmpty ? widget.appState.salonLocation : "Chikmagalur");
+    final cityCtrl = TextEditingController(text: widget.appState.salonLocation);
     final addressCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final emailCtrl = TextEditingController();
