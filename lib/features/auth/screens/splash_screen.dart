@@ -44,12 +44,21 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Future<void> _initAndNavigate() async {
-    final results = await Future.wait<dynamic>([
-      Future.delayed(const Duration(milliseconds: 900)),
-      widget.appState.restoreSession(),
-    ]);
+    bool restored = false;
+    try {
+      final results = await Future.wait<dynamic>([
+        Future.delayed(const Duration(milliseconds: 900)),
+        widget.appState.restoreSession().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => false,
+        ),
+      ]);
+      restored = results[1] == true;
+    } catch (_) {
+      restored = false;
+    }
     if (!mounted) return;
-    final authenticated = results[1] == true || widget.appState.isAuthenticated;
+    final authenticated = restored || widget.appState.isAuthenticated;
     if (authenticated) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(

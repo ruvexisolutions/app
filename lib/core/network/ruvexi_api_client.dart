@@ -27,26 +27,60 @@ class RuvexiApiClient {
   VoidCallbackLike? onUnauthorized;
 
   Future<String?> getToken() async {
-    _cachedToken ??= await _storage.read(key: _tokenStorageKey);
+    if (_cachedToken != null) return _cachedToken;
+    try {
+      _cachedToken = await _storage.read(key: _tokenStorageKey).timeout(const Duration(seconds: 2));
+    } catch (_) {
+      _cachedToken = null;
+      try {
+        await _storage.deleteAll().timeout(const Duration(seconds: 2));
+      } catch (_) {}
+    }
     return _cachedToken;
   }
 
   Future<void> setToken(String token) async {
     _cachedToken = token;
-    await _storage.write(key: _tokenStorageKey, value: token);
+    try {
+      await _storage.write(key: _tokenStorageKey, value: token).timeout(const Duration(seconds: 2));
+    } catch (_) {}
   }
 
-  Future<String?> getUserName() async => _storage.read(key: _userNameKey);
-  Future<void> setUserName(String name) async => _storage.write(key: _userNameKey, value: name);
+  Future<String?> getUserName() async {
+    try {
+      return await _storage.read(key: _userNameKey).timeout(const Duration(seconds: 2));
+    } catch (_) {
+      return null;
+    }
+  }
 
-  Future<String?> getUserEmail() async => _storage.read(key: _userEmailKey);
-  Future<void> setUserEmail(String email) async => _storage.write(key: _userEmailKey, value: email);
+  Future<void> setUserName(String name) async {
+    try {
+      await _storage.write(key: _userNameKey, value: name).timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
+
+  Future<String?> getUserEmail() async {
+    try {
+      return await _storage.read(key: _userEmailKey).timeout(const Duration(seconds: 2));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setUserEmail(String email) async {
+    try {
+      await _storage.write(key: _userEmailKey, value: email).timeout(const Duration(seconds: 2));
+    } catch (_) {}
+  }
 
   Future<void> clearToken() async {
     _cachedToken = null;
-    await _storage.delete(key: _tokenStorageKey);
-    await _storage.delete(key: _userNameKey);
-    await _storage.delete(key: _userEmailKey);
+    try {
+      await _storage.delete(key: _tokenStorageKey).timeout(const Duration(seconds: 2));
+      await _storage.delete(key: _userNameKey).timeout(const Duration(seconds: 2));
+      await _storage.delete(key: _userEmailKey).timeout(const Duration(seconds: 2));
+    } catch (_) {}
   }
 
   Uri _buildUri(String path) {

@@ -797,7 +797,7 @@ class RuvexiAppState extends ChangeNotifier {
     }
 
     try {
-      await syncWorkspace();
+      await syncWorkspace().timeout(const Duration(seconds: 8));
       isAuthenticated = true;
       notifyListeners();
       return true;
