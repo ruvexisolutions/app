@@ -71,8 +71,8 @@ class SettingsStaffScreen extends StatelessWidget {
               const SizedBox(height: 20),
               const Text("Salon Integrations", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
               const SizedBox(height: 10),
-              _buildIntegrationTile(Icons.phone_android, "Meta WhatsApp Cloud API", "Connected • Auto follow-ups active", RuvexiTheme.primaryAccent),
-              _buildIntegrationTile(Icons.account_balance, "Razorpay Payment Gateway", "Active • Instant settlements", Colors.blueAccent),
+              _buildIntegrationTile(Icons.phone_android, "1-Click WhatsApp Messaging", "Pre-typed wa.me bills & reminders", RuvexiTheme.primaryAccent),
+              _buildIntegrationTile(Icons.account_balance, "Direct Salon UPI & Cash", "Zero-fee direct counter settlement", Colors.blueAccent),
             ],
           );
         },

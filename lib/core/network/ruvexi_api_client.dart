@@ -282,8 +282,15 @@ class RuvexiApiClient {
     return Map<String, dynamic>.from(res as Map);
   }
 
-  Future<Map<String, dynamic>> fetchReportsSummary() async {
-    final res = await _request('GET', '/reports/summary');
+  Future<Map<String, dynamic>> fetchReportsSummary({
+    String range = 'month',
+    String? branchId,
+  }) async {
+    final query = <String>['range=${Uri.encodeQueryComponent(range)}'];
+    if (branchId != null && branchId.trim().isNotEmpty) {
+      query.add('branch_id=${Uri.encodeQueryComponent(branchId.trim())}');
+    }
+    final res = await _request('GET', '/reports/summary?${query.join('&')}');
     return Map<String, dynamic>.from(res as Map);
   }
 

@@ -493,20 +493,49 @@ class OverviewDashboardScreen extends StatelessWidget {
                     ],
                   ),
                   const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      "+18% vs avg",
-                      style: TextStyle(
-                        color: Color(0xFF22C55E),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  Builder(
+                    builder: (_) {
+                      final paid = appState.branchInvoices
+                          .where((i) => (i['status'] ?? '').toString().toLowerCase() == 'paid')
+                          .toList();
+                      final now = DateTime.now();
+                      final todayStart = DateTime(now.year, now.month, now.day);
+                      double todaySum = 0.0;
+                      double prior7Sum = 0.0;
+                      for (final inv in paid) {
+                        final rawDt = (inv['paidAt'] ?? inv['createdAt'] ?? '').toString();
+                        final dt = DateTime.tryParse(rawDt)?.toLocal();
+                        final amt = (inv['grandTotal'] is num) ? (inv['grandTotal'] as num).toDouble() : 0.0;
+                        if (dt == null || !dt.isBefore(todayStart)) {
+                          todaySum += amt;
+                        } else if (!dt.isBefore(todayStart.subtract(const Duration(days: 7)))) {
+                          prior7Sum += amt;
+                        }
+                      }
+                      final dailyAvg = prior7Sum / 7.0;
+                      final pct = dailyAvg > 0
+                          ? (((todaySum - dailyAvg) / dailyAvg) * 100.0)
+                          : (todaySum > 0 ? 100.0 : 0.0);
+                      final label = pct > 0
+                          ? "+${pct.toStringAsFixed(0)}% vs avg"
+                          : "${pct.toStringAsFixed(0)}% vs avg";
+                      final isPositive = pct >= 0;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: (isPositive ? const Color(0xFF22C55E) : Colors.redAccent).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: isPositive ? const Color(0xFF22C55E) : Colors.redAccent,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -514,12 +543,34 @@ class OverviewDashboardScreen extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            // Neon Wavy Line Chart
+            // Neon Wavy Line Chart (7-day real revenue trend)
             SizedBox(
               height: 70,
               width: double.infinity,
-              child: CustomPaint(
-                painter: _NeonWavyChartPainter(),
+              child: Builder(
+                builder: (_) {
+                  final now = DateTime.now();
+                  final todayStart = DateTime(now.year, now.month, now.day);
+                  final buckets = List<double>.filled(7, 0.0);
+                  for (final inv in appState.branchInvoices) {
+                    if ((inv['status'] ?? '').toString().toLowerCase() != 'paid') continue;
+                    final rawDt = (inv['paidAt'] ?? inv['createdAt'] ?? '').toString();
+                    final dt = DateTime.tryParse(rawDt)?.toLocal();
+                    final amt = (inv['grandTotal'] is num) ? (inv['grandTotal'] as num).toDouble() : 0.0;
+                    if (dt == null) {
+                      buckets[6] += amt;
+                    } else {
+                      final dayOnly = DateTime(dt.year, dt.month, dt.day);
+                      final diff = todayStart.difference(dayOnly).inDays;
+                      if (diff >= 0 && diff < 7) {
+                        buckets[6 - diff] += amt;
+                      }
+                    }
+                  }
+                  return CustomPaint(
+                    painter: _NeonWavyChartPainter(points: buckets),
+                  );
+                },
               ),
             ),
           ],
@@ -993,20 +1044,36 @@ class OverviewDashboardScreen extends StatelessWidget {
 }
 
 class _NeonWavyChartPainter extends CustomPainter {
+  final List<double> points;
+
+  _NeonWavyChartPainter({required this.points});
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
+    final values = points.length >= 2 ? points : List<double>.filled(7, 0.0);
+    final maxVal = values.reduce((a, b) => a > b ? a : b);
 
-    final path = Path();
-    path.moveTo(0, h * 0.70);
-    path.cubicTo(w * 0.15, h * 0.72, w * 0.25, h * 0.50, w * 0.35, h * 0.45);
-    path.cubicTo(w * 0.45, h * 0.40, w * 0.55, h * 0.85, w * 0.65, h * 0.65);
-    path.cubicTo(w * 0.75, h * 0.50, w * 0.85, h * 0.68, w * 0.98, h * 0.15);
+    final offsets = <Offset>[];
+    for (int i = 0; i < values.length; i++) {
+      final x = (i / (values.length - 1)) * (w * 0.98);
+      final normalized = maxVal > 0 ? (values[i] / maxVal).clamp(0.0, 1.0) : 0.0;
+      final y = h * (0.85 - normalized * 0.70);
+      offsets.add(Offset(x, y));
+    }
+
+    final path = Path()..moveTo(offsets.first.dx, offsets.first.dy);
+    for (int i = 0; i < offsets.length - 1; i++) {
+      final p0 = offsets[i];
+      final p1 = offsets[i + 1];
+      final midX = (p0.dx + p1.dx) / 2;
+      path.cubicTo(midX, p0.dy, midX, p1.dy, p1.dx, p1.dy);
+    }
 
     // Shaded Gradient under curve
     final fillPath = Path.from(path)
-      ..lineTo(w * 0.98, h)
+      ..lineTo(offsets.last.dx, h)
       ..lineTo(0, h)
       ..close();
 
@@ -1032,7 +1099,7 @@ class _NeonWavyChartPainter extends CustomPainter {
     canvas.drawPath(path, strokePaint);
 
     // Glowing Neon Endpoint Circle
-    final endpoint = Offset(w * 0.98, h * 0.15);
+    final endpoint = offsets.last;
     final glowPaint = Paint()
       ..color = const Color(0xFF22C55E).withValues(alpha: 0.4)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
@@ -1043,5 +1110,5 @@ class _NeonWavyChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _NeonWavyChartPainter oldDelegate) => oldDelegate.points != points;
 }

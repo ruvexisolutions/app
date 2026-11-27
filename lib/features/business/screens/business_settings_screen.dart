@@ -341,17 +341,6 @@ class BusinessSettingsScreen extends StatelessWidget {
               onTap: () => showInviteReceptionistSheet(context, appState),
             ),
             _buildSettingTile(
-              icon: Icons.workspace_premium_outlined,
-              title: "Subscription & Plan",
-              trailingBadge: appState.subscriptionStatus.toUpperCase(),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => SubscriptionScreen(appState: appState)),
-                );
-              },
-            ),
-            _buildSettingTile(
               icon: Icons.receipt_long_outlined,
               title: "Payments & Direct UPI",
               trailingBadge: appState.salonUpiId.isNotEmpty ? "DIRECT UPI" : "SETUP UPI",
