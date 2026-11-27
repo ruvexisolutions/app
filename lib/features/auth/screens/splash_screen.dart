@@ -45,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<void> _initAndNavigate() async {
     final results = await Future.wait<dynamic>([
-      Future.delayed(const Duration(milliseconds: 1800)),
+      Future.delayed(const Duration(milliseconds: 900)),
       widget.appState.restoreSession(),
     ]);
     if (!mounted) return;
@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => MainShellScreen(appState: widget.appState),
           transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
+          transitionDuration: const Duration(milliseconds: 300),
         ),
       );
     } else {
@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => LoginScreen(appState: widget.appState),
           transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 500),
+          transitionDuration: const Duration(milliseconds: 300),
         ),
       );
     }

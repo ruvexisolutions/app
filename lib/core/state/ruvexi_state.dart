@@ -918,6 +918,9 @@ class RuvexiAppState extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Run bootstrap + secondary workspace calls in parallel for fast startup
+      final expensesFuture = api.fetchExpenses().catchError((_) => <dynamic>[]);
+      final branchesFuture = api.fetchBranches().catchError((_) => <dynamic>[]);
       final data = await api.fetchBootstrap();
       _applyUserAndSalon(
         data['user'] is Map ? Map<String, dynamic>.from(data['user']) : null,
@@ -956,33 +959,19 @@ class RuvexiAppState extends ChangeNotifier {
         ..clear()
         ..addAll(rawInvoices.whereType<Map>().map((m) => Map<String, dynamic>.from(m)));
 
-      try {
-        final rawExpenses = await api.fetchExpenses();
-        expenses
-          ..clear()
-          ..addAll(rawExpenses.whereType<Map>().map((m) => ExpenseItem.fromJson(Map<String, dynamic>.from(m))));
-      } catch (_) {}
+      final parallelResults = await Future.wait<List<dynamic>>([expensesFuture, branchesFuture]);
+      final rawExpenses = parallelResults[0];
+      expenses
+        ..clear()
+        ..addAll(rawExpenses.whereType<Map>().map((m) => ExpenseItem.fromJson(Map<String, dynamic>.from(m))));
 
-      try {
-        final rawBranches = await api.fetchBranches();
-        branches
-          ..clear()
-          ..addAll(rawBranches.whereType<Map>().map((m) => SalonBranch.fromJson(Map<String, dynamic>.from(m))));
-        if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
-          activeBranch = branches.first;
-        }
-      } catch (_) {}
-
-      try {
-        final sub = await api.fetchSubscriptionStatus();
-        subscriptionStatus = (sub['subscriptionStatus'] ?? subscriptionStatus).toString();
-        subscriptionPlan = (sub['subscriptionPlan'] ?? subscriptionPlan).toString();
-        isTrialActive = sub['isTrialActive'] != false;
-        trialDaysLeft = (sub['trialDaysLeft'] is num) ? (sub['trialDaysLeft'] as num).toInt() : trialDaysLeft;
-        trialEndsAt = sub['trialEndsAt']?.toString() ?? trialEndsAt;
-        conciergeWhatsapp = (sub['conciergeWhatsapp'] ?? '').toString();
-        conciergeUpiId = (sub['conciergeUpiId'] ?? '').toString();
-      } catch (_) {}
+      final rawBranches = parallelResults[1];
+      branches
+        ..clear()
+        ..addAll(rawBranches.whereType<Map>().map((m) => SalonBranch.fromJson(Map<String, dynamic>.from(m))));
+      if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
+        activeBranch = branches.first;
+      }
 
       // Preserve existing active walk-ins while syncing appointment-based clients
       final existingWalkIns = inSalonClients.where((c) => c.status != 'Completed' && c.id.startsWith('ins_')).toList();
@@ -1017,12 +1006,12 @@ class RuvexiAppState extends ChangeNotifier {
       recalculateBranchMetrics();
 
       if (canSwitchRoles) {
-        try {
-          final report = await api.fetchReportsSummary();
+        api.fetchReportsSummary().then((report) {
           if (report['netProfit'] is num) {
             todayProfit = (report['netProfit'] as num).toDouble();
+            notifyListeners();
           }
-        } catch (_) {}
+        }).catchError((_) {});
       }
     } finally {
       isSyncing = false;
