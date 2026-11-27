@@ -262,6 +262,7 @@ class StaffMember {
   final String name;
   final String role;
   final String phone;
+  final String branchId;
   bool isActive;
   bool isClockedIn;
   String checkInTime;
@@ -276,6 +277,7 @@ class StaffMember {
     required this.name,
     required this.role,
     this.phone = "",
+    this.branchId = "",
     this.isActive = true,
     this.isClockedIn = true,
     this.checkInTime = "--",
@@ -302,6 +304,7 @@ class StaffMember {
       name: (json['name'] ?? 'Staff').toString(),
       role: (json['role'] ?? 'Stylist').toString(),
       phone: (json['phone'] ?? '').toString(),
+      branchId: (json['branchId'] ?? json['branch_id'] ?? '').toString(),
       isActive: json['isActive'] != false,
       isClockedIn: clockedIn,
       checkInTime: clockedAt.isNotEmpty ? clockedAt : (clockedIn ? 'Clocked In' : '--'),
@@ -1199,6 +1202,13 @@ class RuvexiAppState extends ChangeNotifier {
     return expenses.where((e) => e.branchId.isEmpty || e.branchId == curBranchId).toList();
   }
 
+  /// Branch-filtered staff members
+  List<StaffMember> get branchStaff {
+    final curBranchId = activeBranch?.id;
+    if (curBranchId == null || curBranchId.isEmpty) return staff;
+    return staff.where((s) => s.branchId.isEmpty || s.branchId == curBranchId).toList();
+  }
+
   double get branchTotalExpenses => branchExpenses.fold(0.0, (sum, e) => sum + e.amount);
 
   void recalculateBranchMetrics() {
@@ -1623,6 +1633,8 @@ class RuvexiAppState extends ChangeNotifier {
         'role': staffMember.role,
         'phone': staffMember.phone,
         'commissionRate': staffMember.commissionRate * 100.0,
+        if (staffMember.branchId.isNotEmpty) 'branchId': staffMember.branchId
+        else if (activeBranch?.id != null && activeBranch!.id.isNotEmpty) 'branchId': activeBranch!.id,
       });
       final idx = staff.indexOf(staffMember);
       if (idx >= 0) staff[idx] = StaffMember.fromJson(created);

@@ -85,9 +85,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
                   name: nameCtrl.text.trim(),
                   role: roleCtrl.text.trim(),
                   phone: phoneCtrl.text.trim(),
+                  branchId: widget.appState.activeBranch?.id ?? "",
                   isActive: true,
                   isClockedIn: true,
-                  checkInTime: "10:00 AM",
+                  checkInTime: "--",
                 );
                 widget.appState.addStaff(newMember);
                 Navigator.pop(ctx);
@@ -139,14 +140,15 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       body: ListenableBuilder(
         listenable: widget.appState,
         builder: (context, _) {
+          final visibleStaff = widget.appState.branchStaff;
           return Column(
             children: [
-              // Tabs: All Staff (8), Attendance
+              // Tabs: All Staff, Attendance
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   children: [
-                    _buildTab(0, "All Staff (${widget.appState.staff.length})"),
+                    _buildTab(0, "All Staff (${visibleStaff.length})"),
                     const SizedBox(width: 10),
                     _buildTab(1, "Attendance"),
                   ],
@@ -158,9 +160,9 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
-                  itemCount: widget.appState.staff.length,
+                  itemCount: visibleStaff.length,
                   itemBuilder: (context, index) {
-                    final member = widget.appState.staff[index];
+                    final member = visibleStaff[index];
                     return _selectedTab == 0 ? _buildStaffTile(member) : _buildAttendanceTile(member);
                   },
                 ),
