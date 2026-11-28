@@ -72,7 +72,7 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
 
   List<Map<String, dynamic>> _getInvoicesForSelectedDate() {
     final q = _query.trim().toLowerCase();
-    final allInvoices = widget.appState.invoices;
+    final allInvoices = widget.appState.branchInvoices;
 
     // Filter by selected date
     final list = allInvoices.where((inv) {
@@ -883,7 +883,9 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "TOTAL COLLECTED",
+                                  _isSameDay(_selectedDate, DateTime.now())
+                                      ? "TODAY'S TOTAL"
+                                      : "DAY'S TOTAL (${DateFormat('dd MMM').format(_selectedDate).toUpperCase()})",
                                   style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 10, letterSpacing: 1),
                                 ),
                                 const SizedBox(height: 2),
@@ -1185,27 +1187,47 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                                     ),
                                     const SizedBox(height: 8),
 
-                                    // Services List
+                                    // Itemized Services List (Service Name + Price)
                                     if (serviceItems.isNotEmpty)
                                       Container(
                                         margin: const EdgeInsets.only(bottom: 6),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF141815),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
-                                        child: Row(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(Icons.content_cut, color: Color(0xFF22C55E), size: 12),
-                                            const SizedBox(width: 6),
-                                            Expanded(
-                                              child: Text(
-                                                "Services: ${serviceItems.map((i) => "${i['name']} × ${i['quantity'] ?? i['qty'] ?? 1}").join(', ')}",
-                                                style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 11),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
+                                            ...serviceItems.map((i) {
+                                              final sName = (i['name'] ?? 'Service').toString();
+                                              final qty = ((i['quantity'] ?? i['qty'] ?? 1) as num).toInt();
+                                              final unitPrice = ((i['price'] ?? i['unitPrice'] ?? 0) as num).toDouble();
+                                              final lineTotal = (unitPrice * qty).toInt();
+                                              return Padding(
+                                                padding: const EdgeInsets.symmetric(vertical: 2),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(Icons.content_cut, color: Color(0xFF22C55E), size: 11),
+                                                    const SizedBox(width: 6),
+                                                    Expanded(
+                                                      child: Text(
+                                                        qty > 1 ? "$sName × $qty" : sName,
+                                                        style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11.5),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      "₹$lineTotal",
+                                                      style: const TextStyle(
+                                                        color: Color(0xFF22C55E),
+                                                        fontSize: 11.5,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }),
                                           ],
                                         ),
                                       ),
@@ -1335,18 +1357,128 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                             .map((i) => i.customerName.toLowerCase())
                             .toSet();
 
+                        final upcomingBirthdays = widget.appState.visibleCustomers
+                            .where((c) => c.hasUpcomingBirthday)
+                            .toList()
+                          ..sort((a, b) => (a.daysUntilBirthday ?? 99).compareTo(b.daysUntilBirthday ?? 99));
+
                         final filtered = widget.appState.visibleCustomers.where((c) {
                           final matches = c.name.toLowerCase().contains(_query.toLowerCase()) || c.phone.contains(_query);
                           if (!matches) return false;
                           if (_clientFilter == 1) return inSalonNames.contains(c.name.toLowerCase());
                           return true;
-                        }).toList();
+                        }).toList()
+                          ..sort((a, b) {
+                            if (a.hasUpcomingBirthday && !b.hasUpcomingBirthday) return -1;
+                            if (!a.hasUpcomingBirthday && b.hasUpcomingBirthday) return 1;
+                            if (a.hasUpcomingBirthday && b.hasUpcomingBirthday) {
+                              return (a.daysUntilBirthday ?? 99).compareTo(b.daysUntilBirthday ?? 99);
+                            }
+                            return 0;
+                          });
+
+                        Future<void> openWhatsAppFor(Customer customer, {String? customMessage}) async {
+                          final digits = customer.phone.replaceAll(RegExp(r'[^0-9]'), '');
+                          if (digits.length < 7) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("No valid phone number for this customer")),
+                            );
+                            return;
+                          }
+                          final phoneParam = digits.length == 10 ? '91$digits' : digits;
+                          final msg = customMessage ??
+                              "Hello ${customer.name}, greetings from ${widget.appState.salonName}!";
+                          final uri = Uri.parse("https://wa.me/$phoneParam?text=${Uri.encodeComponent(msg)}");
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        }
 
                         return ListView.builder(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
-                          itemCount: filtered.length,
+                          itemCount: filtered.length + (upcomingBirthdays.isNotEmpty ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final customer = filtered[index];
+                            if (upcomingBirthdays.isNotEmpty && index == 0) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFFF59E0B).withOpacity(0.18),
+                                      const Color(0xFF141815),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.45)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Text("🎂", style: TextStyle(fontSize: 16)),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            "Upcoming Birthdays (< 7 Days)",
+                                            style: const TextStyle(
+                                              color: Color(0xFFFBBF24),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...upcomingBirthdays.map((bCust) {
+                                      final days = bCust.daysUntilBirthday ?? 0;
+                                      final whenLabel = days == 0 ? "Today!" : (days == 1 ? "Tomorrow" : "In $days days");
+                                      final offerMsg = days == 0
+                                          ? "Happy Birthday ${bCust.name}! 🎂 Celebrate your special day with an exclusive Birthday Offer at ${widget.appState.salonName} ✨"
+                                          : "Happy Birthday in advance ${bCust.name}! 🎂 Celebrate your birthday week with a special offer at ${widget.appState.salonName} ✨";
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                "${bCust.name} • $whenLabel",
+                                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => openWhatsAppFor(bCust, customMessage: offerMsg),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF22C55E),
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.chat_rounded, color: Colors.black, size: 12),
+                                                    SizedBox(width: 4),
+                                                    Text("Send Offer", style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final custIndex = upcomingBirthdays.isNotEmpty ? index - 1 : index;
+                            final customer = filtered[custIndex];
+                            final isBdaySoon = customer.hasUpcomingBirthday;
+                            final days = customer.daysUntilBirthday;
 
                             return GestureDetector(
                               onTap: () {
@@ -1366,7 +1498,11 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF101311),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                  border: Border.all(
+                                    color: isBdaySoon
+                                        ? const Color(0xFFF59E0B).withOpacity(0.55)
+                                        : Colors.white.withOpacity(0.08),
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
@@ -1379,12 +1515,58 @@ class _StaffCustomersScreenState extends State<StaffCustomersScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(customer.name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                                          Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  customer.name,
+                                                  style: TextStyle(
+                                                    color: isBdaySoon ? const Color(0xFFFBBF24) : Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (isBdaySoon && days != null) ...[
+                                                const SizedBox(width: 6),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFF59E0B).withOpacity(0.2),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    days == 0 ? "🎂 Today!" : "🎂 ${days}d",
+                                                    style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 10, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
                                           const SizedBox(height: 2),
                                           Text(customer.phone, style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
                                         ],
                                       ),
                                     ),
+                                    GestureDetector(
+                                      onTap: () => openWhatsAppFor(
+                                        customer,
+                                        customMessage: isBdaySoon
+                                            ? "Happy Birthday ${days == 0 ? '' : 'in advance '}${customer.name}! 🎂 Enjoy a special Birthday Offer at ${widget.appState.salonName} ✨"
+                                            : null,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF22C55E).withOpacity(0.15),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.4)),
+                                        ),
+                                        child: const Icon(Icons.chat_rounded, color: Color(0xFF22C55E), size: 16),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     const Icon(Icons.chevron_right, color: Colors.white38, size: 18),
                                   ],
                                 ),

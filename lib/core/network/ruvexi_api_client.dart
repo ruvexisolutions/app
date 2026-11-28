@@ -382,6 +382,15 @@ class RuvexiApiClient {
     return Map<String, dynamic>.from(res as Map);
   }
 
+  Future<Map<String, dynamic>> updateService(String serviceId, Map<String, dynamic> data) async {
+    final res = await _request('PUT', '/services/$serviceId', body: data);
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<void> deleteService(String serviceId) async {
+    await _request('DELETE', '/services/$serviceId');
+  }
+
   Future<Map<String, dynamic>> createInventoryItem(Map<String, dynamic> data) async {
     final res = await _request('POST', '/inventory', body: data);
     return Map<String, dynamic>.from(res as Map);

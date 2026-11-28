@@ -546,7 +546,105 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
+  Map<String, dynamic> _getServiceInsights() {
+    final custName = _customer.name.trim().toLowerCase();
+    final custDigits = _customer.phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final custTail = custDigits.length >= 10 ? custDigits.substring(custDigits.length - 10) : custDigits;
+
+    bool matchesClient(String? name, String? phone) {
+      final n = (name ?? '').trim().toLowerCase();
+      if (n.isNotEmpty && n == custName) return true;
+      final pDigits = (phone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+      final pTail = pDigits.length >= 10 ? pDigits.substring(pDigits.length - 10) : pDigits;
+      return custTail.isNotEmpty && pTail.isNotEmpty && custTail == pTail;
+    }
+
+    final List<Map<String, dynamic>> history = [];
+    final Map<String, int> serviceCounts = {};
+    int invoiceVisitCount = 0;
+
+    for (final inv in widget.appState.invoices) {
+      if (!matchesClient(inv['customerName']?.toString(), inv['customerPhone']?.toString())) {
+        continue;
+      }
+      invoiceVisitCount++;
+      final rawDate = (inv['createdAt'] ?? inv['date'] ?? '').toString();
+      final parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+      final dateStr = DateFormat("dd MMM yyyy").format(parsedDate);
+      final items = (inv['items'] as List?) ?? const [];
+      final stylist = (inv['staffName'] ?? inv['stylistName'] ?? 'Salon Staff').toString();
+
+      for (final rawItem in items) {
+        if (rawItem is! Map) continue;
+        final itemName = (rawItem['name'] ?? '').toString().trim();
+        if (itemName.isEmpty) continue;
+        final qty = (rawItem['quantity'] is num)
+            ? (rawItem['quantity'] as num).toInt()
+            : int.tryParse('${rawItem['quantity'] ?? rawItem['qty'] ?? 1}') ?? 1;
+        final unitPrice = (rawItem['price'] is num)
+            ? (rawItem['price'] as num).toDouble()
+            : double.tryParse('${rawItem['price'] ?? 0}') ?? 0.0;
+        final lineTotal = (rawItem['total'] is num)
+            ? (rawItem['total'] as num).toDouble()
+            : unitPrice * qty;
+
+        serviceCounts[itemName] = (serviceCounts[itemName] ?? 0) + qty;
+        history.add({
+          'date': dateStr,
+          'sortTime': parsedDate,
+          'service': qty > 1 ? '$itemName × $qty' : itemName,
+          'stylist': stylist,
+          'amount': "₹${lineTotal.toStringAsFixed(0)}",
+        });
+      }
+    }
+
+    int aptCount = 0;
+    for (final apt in widget.appState.appointments) {
+      if (!matchesClient(apt.customerName, apt.customerPhone)) continue;
+      aptCount++;
+      final sName = apt.serviceName.trim();
+      if (sName.isNotEmpty) {
+        serviceCounts[sName] = (serviceCounts[sName] ?? 0) + 1;
+        history.add({
+          'date': DateFormat("dd MMM yyyy").format(apt.time),
+          'sortTime': apt.time,
+          'service': sName,
+          'stylist': apt.staffName,
+          'amount': "₹${apt.price.toStringAsFixed(0)}",
+        });
+      }
+    }
+
+    history.sort((a, b) => (b['sortTime'] as DateTime).compareTo(a['sortTime'] as DateTime));
+
+    String favoriteService = "No services yet";
+    int maxCount = 0;
+    serviceCounts.forEach((name, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        favoriteService = maxCount > 1 ? "$name ($maxCount×)" : name;
+      }
+    });
+
+    final int effectiveVisits = _customer.visitsCount > 0
+        ? _customer.visitsCount
+        : (invoiceVisitCount > 0 ? invoiceVisitCount : aptCount);
+
+    return {
+      'effectiveVisits': effectiveVisits,
+      'favoriteService': favoriteService,
+      'history': history,
+    };
+  }
+
   Widget _buildOverviewTab() {
+    final insights = _getServiceInsights();
+    final int visits = insights['effectiveVisits'] as int;
+    final String favoriteService = insights['favoriteService'] as String;
+    final List<Map<String, dynamic>> previousServices =
+        insights['history'] as List<Map<String, dynamic>>;
+
     return Column(
       children: [
         // 2 Metric cards side by side
@@ -566,7 +664,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     const Icon(Icons.wallet_outlined, color: Color(0xFF22C55E), size: 20),
                     const SizedBox(height: 12),
                     Text(
-                      "${_customer.visitsCount}",
+                      "$visits",
                       style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
@@ -609,6 +707,15 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         ),
         const SizedBox(height: 14),
 
+        // Favorite Service Row
+        _buildInfoRow(
+          icon: Icons.favorite_outline_rounded,
+          title: "Favorite Service",
+          value: favoriteService,
+          valueColor: favoriteService == "No services yet" ? Colors.white54 : const Color(0xFF22C55E),
+        ),
+        const SizedBox(height: 10),
+
         // Loyalty Points Row
         _buildInfoRow(
           icon: Icons.card_giftcard_rounded,
@@ -625,7 +732,84 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           valueColor: _customer.hasActiveMembership ? const Color(0xFFFACC15) : const Color(0xFF22C55E),
           onTap: _showUpgradeMembershipSheet,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
+
+        // Previous Opted Services Card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF101311),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.history_rounded, color: Color(0xFF22C55E), size: 17),
+                      SizedBox(width: 8),
+                      Text(
+                        "Previous Opted Services",
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    "${previousServices.length} total",
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (previousServices.isEmpty)
+                Text(
+                  "No previous opted services recorded yet.",
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                )
+              else
+                ...previousServices.take(5).map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(color: Color(0xFF22C55E), shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item['service'].toString(),
+                                style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                "${item['date']} • ${item['stylist']}",
+                                style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          item['amount'].toString(),
+                          style: const TextStyle(color: Color(0xFF22C55E), fontSize: 12.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
 
         // Universal Cross-Branch Access Badge
         Container(
@@ -690,13 +874,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   }
 
   Widget _buildVisitsTab() {
-    final customerAppointments = widget.appState.appointments
-        .where((a) =>
-            a.customerName.toLowerCase() == _customer.name.toLowerCase() ||
-            (a.customerPhone.isNotEmpty && a.customerPhone == _customer.phone))
-        .toList();
+    final insights = _getServiceInsights();
+    final List<Map<String, dynamic>> history =
+        insights['history'] as List<Map<String, dynamic>>;
 
-    if (customerAppointments.isEmpty) {
+    if (history.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 30),
         alignment: Alignment.center,
@@ -708,10 +890,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     }
 
     return Column(
-      children: customerAppointments.map((apt) {
-        final dateStr = DateFormat("dd MMM yyyy").format(apt.time);
-        final amt = "₹${apt.price.toStringAsFixed(0)}";
-        return _buildVisitTile(dateStr, apt.serviceName, apt.staffName, amt);
+      children: history.map((item) {
+        return _buildVisitTile(
+          item['date'].toString(),
+          item['service'].toString(),
+          item['stylist'].toString(),
+          item['amount'].toString(),
+        );
       }).toList(),
     );
   }

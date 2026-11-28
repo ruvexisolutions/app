@@ -291,6 +291,145 @@ class _ServicesPricingScreenState extends State<ServicesPricingScreen> {
     );
   }
 
+  void _showEditServiceDialog(ServiceItem item) {
+    final nameCtrl = TextEditingController(text: item.name);
+    final priceCtrl = TextEditingController(
+      text: item.price % 1 == 0 ? item.price.toInt().toString() : item.price.toString(),
+    );
+    final durationCtrl = TextEditingController(text: item.durationMinutes.toString());
+    final branchName = widget.appState.activeBranchName.isNotEmpty
+        ? widget.appState.activeBranchName
+        : "Current Branch";
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: const Color(0xFF101311),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFF22C55E), width: 1),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_outlined, color: Color(0xFF22C55E), size: 20),
+              SizedBox(width: 8),
+              Text("Edit Service", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF142419),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.35)),
+                  ),
+                  child: Text(
+                    "Name applies across all branches.\nPrice applies only to: $branchName",
+                    style: const TextStyle(color: Color(0xFF86EFAC), fontSize: 11, height: 1.35),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Service Name *",
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: priceCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "$branchName Price (₹) *",
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: durationCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: "Duration (minutes)",
+                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                    filled: true,
+                    fillColor: const Color(0xFF141815),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF22C55E)),
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final newName = nameCtrl.text.trim();
+                      final newPrice = double.tryParse(priceCtrl.text.trim());
+                      final newDur = int.tryParse(durationCtrl.text.trim());
+                      if (newName.isEmpty || newPrice == null || newPrice < 0) return;
+
+                      setModalState(() => isSaving = true);
+                      try {
+                        await widget.appState.updateService(
+                          item,
+                          name: newName,
+                          price: newPrice,
+                          durationMinutes: newDur,
+                        );
+                        if (!mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(content: Text("Updated $newName (₹${newPrice.toInt()} for $branchName)")),
+                        );
+                      } catch (e) {
+                        setModalState(() => isSaving = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text("Failed to update service: $e"),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                    )
+                  : const Text("Save Changes", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -460,55 +599,85 @@ class _ServicesPricingScreenState extends State<ServicesPricingScreen> {
       if (selectedCat == "All") return true;
       return s.category.toLowerCase() == selectedCat.toLowerCase();
     }).toList();
+    final branchName = widget.appState.activeBranchName.isNotEmpty
+        ? widget.appState.activeBranchName
+        : "Main Branch";
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
-      itemCount: list.length,
+      itemCount: list.length + 1,
       itemBuilder: (context, index) {
-        final item = list[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF101311),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF181D1A),
-                  borderRadius: BorderRadius.circular(10),
+        if (index == 0) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF101B13),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.tune_rounded, color: Color(0xFF22C55E), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Editing prices for $branchName • Tap any service to update its Name & Branch Price",
+                    style: const TextStyle(color: Color(0xFFBBF7D0), fontSize: 11.5, fontWeight: FontWeight.w500),
+                  ),
                 ),
-                child: const Icon(Icons.content_cut, color: Color(0xFF22C55E), size: 18),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "₹${item.price.toInt()}",
-                      style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+              ],
+            ),
+          );
+        }
+
+        final item = list[index - 1];
+        return GestureDetector(
+          onTap: () => _showEditServiceDialog(item),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF101311),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF181D1A),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.content_cut, color: Color(0xFF22C55E), size: 18),
                 ),
-              ),
-              Text(
-                "${item.durationMinutes} min",
-                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right, color: Colors.white38, size: 18),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "₹${item.price.toInt()}",
+                        style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  "${item.durationMinutes} min",
+                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit_outlined, color: Color(0xFF22C55E), size: 17),
+              ],
+            ),
           ),
         );
       },

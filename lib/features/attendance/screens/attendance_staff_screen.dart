@@ -86,7 +86,7 @@ class AttendanceStaffScreen extends StatelessWidget {
                       children: [
                         _buildSubStat("Shift Check-In", member.checkInTime),
                         _buildSubStat("Today Sales", "₹${member.todaySales.toStringAsFixed(0)}"),
-                        _buildSubStat("Commission (${(member.commissionRate * 100).toInt()}%)", "₹${commissionAmt.toStringAsFixed(0)}", isHighlight: true),
+                        _buildSubStat("Services", "${member.servicesCount}", isHighlight: true),
                       ],
                     ),
                   ],

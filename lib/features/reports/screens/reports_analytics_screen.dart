@@ -461,14 +461,14 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
         }
       }
     } else if (_selectedChip == 2) {
-      title = "Staff Revenue & Commission";
+      title = "Staff Revenue Performance";
       if (staffPerf.isEmpty) {
         rows.add(const Text("No staff billing recorded in this period yet.", style: TextStyle(color: Colors.white54, fontSize: 12)));
       } else {
         for (final st in staffPerf.take(5)) {
           final rev = (st['revenue'] is num) ? (st['revenue'] as num).toDouble() : 0.0;
-          final comm = (st['commissionEarned'] is num) ? (st['commissionEarned'] as num).toDouble() : 0.0;
-          rows.add(_breakdownRow("${st['staffName']}", "₹${rev.toStringAsFixed(0)} (Comm ₹${comm.toStringAsFixed(0)})"));
+          final cnt = (st['servicesCount'] is num) ? (st['servicesCount'] as num).toInt() : 0;
+          rows.add(_breakdownRow("${st['staffName']} ($cnt)", "₹${rev.toStringAsFixed(0)}"));
         }
       }
     } else {

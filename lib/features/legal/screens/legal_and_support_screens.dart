@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 
 class HelpSupportScreen extends StatelessWidget {
@@ -72,42 +73,21 @@ class HelpSupportScreen extends StatelessWidget {
               title: "Email Support",
               subtitle: "ruvexisolutions@gmail.com",
               actionLabel: "Write Email",
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Email client opened for ruvexisolutions@gmail.com")),
+              onTap: () async {
+                final uri = Uri(
+                  scheme: 'mailto',
+                  path: 'ruvexisolutions@gmail.com',
+                  query: 'subject=${Uri.encodeComponent("RUVEXI Salon Support Request")}',
                 );
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Contact us at ruvexisolutions@gmail.com")),
+                  );
+                }
               },
             ),
-            const SizedBox(height: 10),
-
-            _buildContactCard(
-              icon: Icons.chat_bubble_outline_rounded,
-              title: "WhatsApp Priority Desk",
-              subtitle: "Instant response for live billing issues",
-              actionLabel: "Chat Now",
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Connecting to Ruvexi WhatsApp Care (+91 98765 43210)...")),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Frequently Asked Questions
-            const Text(
-              "Frequently Asked Questions",
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            _buildFaqTile("How does Dynamic UPI QR work with billing?",
-              "When you proceed to payment, the POS automatically computes tax, discounts, and generates a dynamic NPCI-standard QR code. Your customer scans and pays directly, with instant payment confirmation."),
-            _buildFaqTile("Can I pair ESC/POS Bluetooth thermal printers?",
-              "Yes. Ruvexi supports all standard 58mm and 80mm wireless Bluetooth receipt and kitchen thermal printers with single-tap instant print."),
-            _buildFaqTile("How are staff commissions calculated?",
-              "Each staff member has a configured commission percentage on completed services. The system aggregates their monthly earnings and tracks ledger payouts in real-time."),
-            _buildFaqTile("Is customer formula data secure?",
-              "All customer hair/skin formula notes are encrypted at rest with AES-256 and protected via strict multi-tenant Row Level Security."),
             const SizedBox(height: 30),
           ],
         ),

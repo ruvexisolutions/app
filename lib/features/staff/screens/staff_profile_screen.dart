@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:ruvexi_mobile/core/state/ruvexi_state.dart';
-import 'package:ruvexi_mobile/core/theme/ruvexi_theme.dart';
 
 class StaffProfileScreen extends StatefulWidget {
   final RuvexiAppState appState;
@@ -39,6 +39,36 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _callStaff() async {
+    final cleanNum = _staff.phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (cleanNum.isEmpty) {
+      _showActionToast("No phone number saved for ${_staff.name}");
+      return;
+    }
+    final uri = Uri.parse("tel:$cleanNum");
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      _showActionToast("Unable to open dialpad");
+    }
+  }
+
+  Future<void> _messageStaffWhatsApp() async {
+    final digits = _staff.phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      _showActionToast("No phone number saved for ${_staff.name}");
+      return;
+    }
+    final waPhone = digits.length == 10 ? "91$digits" : digits;
+    final msg = Uri.encodeComponent("Hi ${_staff.name}, ");
+    final uri = Uri.parse("https://wa.me/$waPhone?text=$msg");
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      _showActionToast("Unable to open WhatsApp");
+    }
   }
 
   @override
@@ -121,14 +151,14 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildActionCircle(Icons.phone_outlined, "Call", () => _showActionToast("Calling ${_staff.phone}...")),
+                _buildActionCircle(Icons.phone_outlined, "Call", _callStaff),
                 const SizedBox(width: 32),
-                _buildActionCircle(Icons.chat_bubble_outline, "Message", () => _showActionToast("Sending message to ${_staff.name}...")),
+                _buildActionCircle(Icons.chat_bubble_outline, "Message", _messageStaffWhatsApp),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Tabs: Overview, Attendance, Commission
+            // Tabs: Overview, Attendance
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
@@ -140,7 +170,6 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                 children: [
                   _buildTabSegment(0, "Overview"),
                   _buildTabSegment(1, "Attendance"),
-                  _buildTabSegment(2, "Commission"),
                 ],
               ),
             ),
@@ -149,7 +178,6 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
             // Tab Content
             if (_selectedTabIndex == 0) _buildOverviewTab(),
             if (_selectedTabIndex == 1) _buildAttendanceTab(),
-            if (_selectedTabIndex == 2) _buildCommissionTab(),
           ],
         ),
       ),
@@ -279,15 +307,15 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("%", style: TextStyle(color: Color(0xFF22C55E), fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Icon(Icons.access_time_rounded, color: Color(0xFF22C55E), size: 20),
                     const SizedBox(height: 12),
                     Text(
-                      "${(_staff.commissionRate * 100).toInt()}%",
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      _staff.isClockedIn ? _staff.checkInTime : "Off",
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "Commission",
+                      "Shift Status",
                       style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12),
                     ),
                   ],
@@ -406,49 +434,5 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
     );
   }
 
-  Widget _buildCommissionTab() {
-    final earnedCommission = _staff.serviceRevenue * _staff.commissionRate;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF101311),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Monthly Payout Breakdown", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 14),
-          _buildPayoutRow("Gross Revenue Generated", "₹${_staff.serviceRevenue.toInt()}"),
-          const SizedBox(height: 8),
-          _buildPayoutRow("Commission Rate", "${(_staff.commissionRate * 100).toInt()}%"),
-          const SizedBox(height: 8),
-          _buildPayoutRow("Commission Earned", "₹${earnedCommission.toInt()}", valueColor: const Color(0xFF22C55E)),
-          const Divider(color: Color(0xFF1C221E), height: 24),
-          _buildPayoutRow("Total Payout Due (with base)", "₹${(earnedCommission + 25000).toInt()}", valueColor: Colors.white, isBold: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPayoutRow(String label, String value, {Color? valueColor, bool isBold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13)),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor ?? Colors.white,
-            fontSize: 13,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
 }
 

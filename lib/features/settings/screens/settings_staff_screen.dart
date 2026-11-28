@@ -47,7 +47,7 @@ class SettingsStaffScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text("Team Stylists & Commissions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+              const Text("Team Stylists & Roster", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
               const SizedBox(height: 10),
               if (appState.staff.isEmpty)
                 Container(
@@ -65,7 +65,7 @@ class SettingsStaffScreen extends StatelessWidget {
                 ...appState.staff.map((s) => _buildStaffTile(
                       s.name,
                       s.role,
-                      "${(s.commissionRate * 100).toStringAsFixed(0)}% Commission",
+                      s.phone.isNotEmpty ? s.phone : "Active Staff",
                       s.isClockedIn ? "Clocked In" : "Offline",
                     )),
               const SizedBox(height: 20),

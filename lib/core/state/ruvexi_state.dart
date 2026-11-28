@@ -9,6 +9,8 @@ class ServiceItem {
   final String name;
   final String category;
   final double price;
+  final double basePrice;
+  final Map<String, double> branchPrices;
   final int durationMinutes;
   final int bufferMinutes;
   final String description;
@@ -21,20 +23,92 @@ class ServiceItem {
     required this.name,
     required this.category,
     required this.price,
+    double? basePrice,
+    Map<String, double>? branchPrices,
     required this.durationMinutes,
     this.bufferMinutes = 5,
     this.description = '',
     this.popular = false,
     this.isOnlineBookable = true,
     this.isActive = true,
-  });
+  })  : basePrice = basePrice ?? price,
+        branchPrices = branchPrices ?? const {};
 
-  factory ServiceItem.fromJson(Map<String, dynamic> json) {
+  ServiceItem resolvedForBranch(String? branchId) {
+    final resolved = (branchId != null && branchId.isNotEmpty && branchPrices.containsKey(branchId))
+        ? branchPrices[branchId]!
+        : basePrice;
+    return ServiceItem(
+      id: id,
+      name: name,
+      category: category,
+      price: resolved,
+      basePrice: basePrice,
+      branchPrices: branchPrices,
+      durationMinutes: durationMinutes,
+      bufferMinutes: bufferMinutes,
+      description: description,
+      popular: popular,
+      isOnlineBookable: isOnlineBookable,
+      isActive: isActive,
+    );
+  }
+
+  ServiceItem copyWith({
+    String? id,
+    String? name,
+    String? category,
+    double? price,
+    double? basePrice,
+    Map<String, double>? branchPrices,
+    int? durationMinutes,
+    int? bufferMinutes,
+    String? description,
+    bool? popular,
+    bool? isOnlineBookable,
+    bool? isActive,
+  }) {
+    return ServiceItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      price: price ?? this.price,
+      basePrice: basePrice ?? this.basePrice,
+      branchPrices: branchPrices ?? this.branchPrices,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      bufferMinutes: bufferMinutes ?? this.bufferMinutes,
+      description: description ?? this.description,
+      popular: popular ?? this.popular,
+      isOnlineBookable: isOnlineBookable ?? this.isOnlineBookable,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
+  factory ServiceItem.fromJson(Map<String, dynamic> json, {String? branchId}) {
+    final rawPrice = (json['price'] is num)
+        ? (json['price'] as num).toDouble()
+        : double.tryParse('${json['price']}') ?? 0.0;
+    final rawBase = (json['basePrice'] is num)
+        ? (json['basePrice'] as num).toDouble()
+        : (double.tryParse('${json['basePrice']}') ?? rawPrice);
+    final Map<String, double> bpMap = {};
+    if (json['branchPrices'] is Map) {
+      (json['branchPrices'] as Map).forEach((k, v) {
+        final d = (v is num) ? v.toDouble() : double.tryParse('$v');
+        if (d != null) bpMap[k.toString()] = d;
+      });
+    }
+    final resolvedPrice = (branchId != null && branchId.isNotEmpty && bpMap.containsKey(branchId))
+        ? bpMap[branchId]!
+        : rawPrice;
+
     return ServiceItem(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? 'Service').toString(),
       category: (json['category'] ?? 'Hair').toString(),
-      price: (json['price'] is num) ? (json['price'] as num).toDouble() : double.tryParse('${json['price']}') ?? 0.0,
+      price: resolvedPrice,
+      basePrice: rawBase,
+      branchPrices: bpMap,
       durationMinutes: (json['durationMinutes'] is num)
           ? (json['durationMinutes'] as num).toInt()
           : int.tryParse('${json['durationMinutes']}') ?? 45,
@@ -144,6 +218,73 @@ class Customer {
     if (m.contains("silver")) return 5.0;
     if (m.contains("prime") || m.contains("elite") || m.contains("member")) return 10.0;
     return 0.0;
+  }
+
+  /// Returns days until the customer's next birthday (0 = today, 1..6 = within a week),
+  /// or null if [dateOfBirth] is empty or unparseable.
+  int? get daysUntilBirthday {
+    final raw = dateOfBirth.trim();
+    if (raw.isEmpty) return null;
+
+    int? month;
+    int? day;
+
+    final isoMatch = RegExp(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})').firstMatch(raw);
+    if (isoMatch != null) {
+      month = int.tryParse(isoMatch.group(2)!);
+      day = int.tryParse(isoMatch.group(3)!);
+    } else {
+      final dmyMatch = RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$').firstMatch(raw);
+      if (dmyMatch != null) {
+        day = int.tryParse(dmyMatch.group(1)!);
+        month = int.tryParse(dmyMatch.group(2)!);
+      } else {
+        final mdMatch = RegExp(r'^(\d{1,2})[-/](\d{1,2})$').firstMatch(raw);
+        if (mdMatch != null) {
+          month = int.tryParse(mdMatch.group(1)!);
+          day = int.tryParse(mdMatch.group(2)!);
+        } else {
+          const monthMap = {
+            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+          };
+          final textMatch = RegExp(r'^(\d{1,2})\s+([A-Za-z]{3,})').firstMatch(raw);
+          if (textMatch != null) {
+            day = int.tryParse(textMatch.group(1)!);
+            final key = textMatch.group(2)!.toLowerCase().substring(0, 3);
+            month = monthMap[key];
+          } else {
+            final parsed = DateTime.tryParse(raw);
+            if (parsed != null) {
+              month = parsed.month;
+              day = parsed.day;
+            }
+          }
+        }
+      }
+    }
+
+    if (month == null || day == null || month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    int safeDay(int year, int m, int d) {
+      final maxDay = DateTime(year, m + 1, 0).day;
+      return d > maxDay ? maxDay : d;
+    }
+
+    var nextBday = DateTime(today.year, month, safeDay(today.year, month, day));
+    if (nextBday.isBefore(today)) {
+      nextBday = DateTime(today.year + 1, month, safeDay(today.year + 1, month, day));
+    }
+    return nextBday.difference(today).inDays;
+  }
+
+  bool get hasUpcomingBirthday {
+    final days = daysUntilBirthday;
+    return days != null && days >= 0 && days < 7;
   }
 
   Customer copyWith({
@@ -975,6 +1116,7 @@ class RuvexiAppState extends ChangeNotifier {
       if (branches.isNotEmpty && (activeBranch == null || !branches.any((b) => b.id == activeBranch!.id))) {
         activeBranch = branches.first;
       }
+      _applyBranchPricingToCatalog();
 
       // Preserve existing active walk-ins while syncing appointment-based clients
       final existingWalkIns = inSalonClients.where((c) => c.status != 'Completed' && c.id.startsWith('ins_')).toList();
@@ -1261,8 +1403,16 @@ class RuvexiAppState extends ChangeNotifier {
     if (branch.phone.trim().isNotEmpty) {
       salonPhone = branch.phone.trim();
     }
+    _applyBranchPricingToCatalog();
     recalculateBranchMetrics();
     notifyListeners();
+  }
+
+  void _applyBranchPricingToCatalog() {
+    final bId = activeBranch?.id;
+    for (int i = 0; i < catalog.length; i++) {
+      catalog[i] = catalog[i].resolvedForBranch(bId);
+    }
   }
 
   Future<Map<String, dynamic>> inviteReceptionist({
@@ -1663,17 +1813,67 @@ class RuvexiAppState extends ChangeNotifier {
     catalog.add(service);
     notifyListeners();
     try {
+      final bId = activeBranch?.id ?? '';
       final created = await api.createService({
         'name': service.name,
         'category': service.category,
         'price': service.price,
         'durationMinutes': service.durationMinutes,
+        if (bId.isNotEmpty) 'branchId': bId,
       });
       final idx = catalog.indexOf(service);
-      if (idx >= 0) catalog[idx] = ServiceItem.fromJson(created);
+      if (idx >= 0) catalog[idx] = ServiceItem.fromJson(created, branchId: bId);
       notifyListeners();
     } catch (e) {
       catalog.remove(service);
+      lastSyncError = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateService(
+    ServiceItem service, {
+    required String name,
+    required double price,
+    int? durationMinutes,
+    String? category,
+  }) async {
+    final idx = catalog.indexWhere((s) => s.id == service.id);
+    if (idx < 0) return;
+    final oldService = catalog[idx];
+    final bId = activeBranch?.id ?? '';
+    final updatedBranchPrices = Map<String, double>.from(oldService.branchPrices);
+    if (bId.isNotEmpty) {
+      updatedBranchPrices[bId] = price;
+    }
+
+    catalog[idx] = oldService.copyWith(
+      name: name,
+      price: price,
+      basePrice: bId.isEmpty ? price : oldService.basePrice,
+      branchPrices: updatedBranchPrices,
+      durationMinutes: durationMinutes ?? oldService.durationMinutes,
+      category: category ?? oldService.category,
+    );
+    notifyListeners();
+
+    try {
+      final updatedJson = await api.updateService(service.id, {
+        'name': name,
+        'price': price,
+        if (durationMinutes != null) 'durationMinutes': durationMinutes,
+        if (category != null) 'category': category,
+        if (bId.isNotEmpty) 'branchId': bId,
+      });
+      final currentIdx = catalog.indexWhere((s) => s.id == service.id);
+      if (currentIdx >= 0) {
+        catalog[currentIdx] = ServiceItem.fromJson(updatedJson, branchId: bId);
+      }
+      notifyListeners();
+    } catch (e) {
+      final revertIdx = catalog.indexWhere((s) => s.id == service.id);
+      if (revertIdx >= 0) catalog[revertIdx] = oldService;
       lastSyncError = e.toString();
       notifyListeners();
       rethrow;
