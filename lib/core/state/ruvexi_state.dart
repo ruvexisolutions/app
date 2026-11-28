@@ -1880,6 +1880,21 @@ class RuvexiAppState extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteService(String serviceId) async {
+    final idx = catalog.indexWhere((s) => s.id == serviceId);
+    if (idx < 0) return;
+    final removed = catalog.removeAt(idx);
+    notifyListeners();
+    try {
+      await api.deleteService(serviceId);
+    } catch (e) {
+      catalog.insert(idx.clamp(0, catalog.length), removed);
+      lastSyncError = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<void> addInventoryItem(InventoryItem item) async {
     inventory.insert(0, item);
     notifyListeners();

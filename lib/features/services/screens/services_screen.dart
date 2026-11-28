@@ -379,7 +379,32 @@ class _ServicesPricingScreenState extends State<ServicesPricingScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      setModalState(() => isSaving = true);
+                      try {
+                        await widget.appState.deleteService(item.id);
+                        if (!mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(content: Text("Deleted ${item.name} from all branches")),
+                        );
+                      } catch (e) {
+                        setModalState(() => isSaving = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text("Failed to delete service: $e"),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    },
+              child: const Text("Delete", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
               child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
